@@ -1,0 +1,4 @@
+- express: Web framework.
+- mysql2: MySQL client for Node.js (better performance than mysql).
+- dotenv: For loading environment variables from a .env file.
+- cors: For handling Cross-Origin Resource Sharing, essential for frontend-backend communication.

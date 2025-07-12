@@ -1,0 +1,43 @@
+#use docker-compose to manage services.
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: bill-tracker-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: your_strong_root_password
+      MYSQL_DATABASE: bill_tracker_db
+      MYSQL_USER: bill_user
+      MYSQL_PASSWORD: your_db_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    restart: always
+
+  organization-service:
+    build:
+      context: ./backend/organization-service # Path to your Dockerfile for this service
+      dockerfile: Dockerfile
+    container_name: bill-tracker-organization-service
+    ports:
+      - "3001:3001" # Map service port to host port
+    environment:
+      DB_HOST: db # Connects to the 'db' service in docker-compose network
+      DB_USER: bill_user
+      DB_PASSWORD: your_db_password
+      DB_NAME: bill_tracker_db
+      DB_PORT: 3306
+      SERVICE_PORT: 3001
+    depends_on:
+      db:
+        condition: service_healthy # Ensure DB is healthy before starting
+    restart: always
+
+volumes:
+  db_data:
