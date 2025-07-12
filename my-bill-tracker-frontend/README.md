@@ -184,3 +184,20 @@ Development Workflow (Containerized)
     Docker Compose for Local Dev: A docker-compose.yml file will orchestrate all services (frontend, all backend microservices, MySQL database) to run together in a local development environment.
 
     CI/CD: Set up a continuous integration/continuous deployment pipeline to automate testing, building Docker images, and deploying to a staging/production environment (e.g., Kubernetes cluster).
+
+
+ Component Structure Overview
+
+We'll organize our frontend into several key components:
+
+    src/App.jsx: The main application component, handling routing.
+
+    src/components/Header.jsx: A simple navigation header.
+
+    src/pages/Dashboard.jsx: Displays upcoming and recently paid bills.
+
+    src/pages/BillOrganizationForm.jsx: Form for adding/editing bill organizations.
+
+    src/pages/RecordPaymentForm.jsx: Form for recording monthly bill payments.
+
+    src/pages/NotFound.jsx: For handling invalid routes.

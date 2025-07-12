@@ -1,3 +1,4 @@
+//2. This is the main application file, where we'll set up the routing for different pages.
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header.jsx';

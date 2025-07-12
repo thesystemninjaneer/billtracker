@@ -1,3 +1,4 @@
+//4. This page will display upcoming bills and recently paid bills. We'll use placeholder data for now.
 import React, { useState, useEffect } from 'react';
 import './Dashboard.css'; // Component-specific styles
 

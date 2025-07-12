@@ -1,3 +1,4 @@
+//6. Form for adding or editing bill organization details.
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './Forms.css'; // Shared styles for forms

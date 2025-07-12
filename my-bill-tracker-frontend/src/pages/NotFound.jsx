@@ -1,3 +1,4 @@
+//8. A simple page for routes that don't exist.
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './NotFound.css';
