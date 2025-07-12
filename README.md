@@ -22,3 +22,5 @@ An app for tracking personal monthly bill payments such as power, water, and cab
   - add and delete paid bill details to include date paid, payment confirmation code, and amount paid
 
 Test above with Google Gemini.
+
+![dashboard](images/dashboard.PNG)
