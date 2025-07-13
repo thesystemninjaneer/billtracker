@@ -20,3 +20,15 @@ INSERT INTO organizations (user_id, name, account_number, typical_due_day, websi
 (1, 'Dominion Energy', '1234567890', 20, 'https://dominionenergy.com', '1-800-POWER'),
 (1, 'Fairfax Water', 'FVW987654', 15, 'https://fairfaxwater.org', '703-698-5800'),
 (1, 'Verizon Fios', 'VZFIOS112233', 1, 'https://verizon.com/fios', '1-800-VERIZON');
+
+-- Setup users
+-- Create the users table
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    profile_config JSON, -- For future use, e.g., notification preferences
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

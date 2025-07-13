@@ -79,3 +79,8 @@ The base URL for your Organization Service will be http://localhost:3001.
   - Method: DELETE
 
 You now have a fully functional Organization Service containerized and connected to a persistent MySQL database!
+
+### mysql schema for users
+
+The bill_tracker_db includes a `users` table for the "Users Service" microservice will be responsible for user registration, login, and managing user profiles. It uses Node.js with Express to integrate secure password handling with JWT-based authentication.
+
