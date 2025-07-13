@@ -24,3 +24,6 @@ An app for tracking personal monthly bill payments such as power, water, and cab
 Test above with Google Gemini.
 
 ![dashboard](images/dashboard.PNG)
+
+
+TODO: patche docker-compose to include and run the db-init.sql to setup the myqsl db.
