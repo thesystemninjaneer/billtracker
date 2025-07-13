@@ -140,3 +140,4 @@ Test Flow:
 Congratulations! Your Organization Service is now securely integrated with the User Service, and data access is correctly restricted to the authenticated user.
 
 Next, we should tackle the Bill Payment Service to start tracking actual monthly bills and update the dashboard. How does that sound?
+

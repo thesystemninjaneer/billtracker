@@ -35,7 +35,7 @@ services:
       DB_NAME: bill_tracker_db
       DB_PORT: 3306
       SERVICE_PORT: 3001
-      JWT_SECRET: your_jwt_secret_key_very_long_and_random # ⚠️ Add this line, match User Service's secret!
+      JWT_SECRET: your_jwt_secret_key_very_long_and_random # Match this!
     depends_on:
       db:
         condition: service_healthy
@@ -43,11 +43,11 @@ services:
 
   user-service:
     build:
-      context: ./backend/user-service # Path to your Dockerfile for this service
+      context: ./backend/user-service
       dockerfile: Dockerfile
     container_name: bill-tracker-user-service
     ports:
-      - "3000:3000" # Map service port to host port
+      - "3000:3000"
     environment:
       DB_HOST: db
       DB_USER: bill_user
@@ -55,10 +55,32 @@ services:
       DB_NAME: bill_tracker_db
       DB_PORT: 3306
       SERVICE_PORT: 3000
-      JWT_SECRET: your_jwt_secret_key_very_long_and_random # ⚠️ Match this with .env
+      JWT_SECRET: your_jwt_secret_key_very_long_and_random # Match this!
     depends_on:
       db:
         condition: service_healthy
+    restart: always
+
+  bill-payment-service:
+    build:
+      context: ./backend/bill-payment-service # Path to your Dockerfile for this service
+      dockerfile: Dockerfile
+    container_name: bill-tracker-bill-payment-service
+    ports:
+      - "3002:3002" # Map service port to host port
+    environment:
+      DB_HOST: db
+      DB_USER: bill_user
+      DB_PASSWORD: your_db_password
+      DB_NAME: bill_tracker_db
+      DB_PORT: 3306
+      SERVICE_PORT: 3002
+      JWT_SECRET: your_jwt_secret_key_very_long_and_random # ⚠️ Add this line, match User Service's secret!
+    depends_on:
+      db:
+        condition: service_healthy
+      organization-service: # Also depends on organization service for linking bills to orgs
+        condition: service_started
     restart: always
 
 volumes:

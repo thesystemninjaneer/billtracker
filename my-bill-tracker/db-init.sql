@@ -32,3 +32,44 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- Use the database specified in docker-compose.yml
+USE bill_tracker_db;
+
+-- Create the bills table for recurring bill information
+CREATE TABLE bills (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL, -- Links to the users table
+    organization_id INT NOT NULL, -- Links to the organizations table
+    bill_name VARCHAR(255) NOT NULL, -- e.g., "Electricity Bill", "Internet Bill"
+    due_day INT, -- Typical day of the month bill is due (1-31)
+    typical_amount DECIMAL(10, 2), -- Typical amount due, if known
+    frequency VARCHAR(50) DEFAULT 'monthly', -- e.g., 'monthly', 'quarterly', 'annually'
+    is_active BOOLEAN DEFAULT TRUE, -- Is this recurring bill still active?
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    UNIQUE KEY (user_id, organization_id, bill_name) -- Ensure unique bill name per organization per user
+);
+
+-- Create the payments table for individual payment records
+CREATE TABLE payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL, -- Links to the users table
+    bill_id INT NOT NULL, -- Links to the bills table (optional, can be NULL if standalone payment)
+    organization_id INT NOT NULL, -- Links to the organizations table
+    due_date DATE NOT NULL,
+    amount_due DECIMAL(10, 2) NOT NULL,
+    payment_status ENUM('pending', 'paid', 'overdue', 'cancelled') DEFAULT 'pending',
+    date_paid DATE,
+    amount_paid DECIMAL(10, 2),
+    confirmation_code VARCHAR(255),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (bill_id) REFERENCES bills(id) ON DELETE SET NULL, -- If bill entry is deleted, payment record can remain
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+);
