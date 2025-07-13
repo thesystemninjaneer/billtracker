@@ -1,18 +1,20 @@
 //the main application file
-require('dotenv').config(); // Load environment variables from .env
+require('dotenv').config();
 
 const express = require('express');
-const mysql = require('mysql2/promise'); // Use promise-based API
-const cors = require('cors'); // Import CORS
+const mysql = require('mysql2/promise');
+const cors = require('cors');
+const jwt = require('jsonwebtoken'); // Import jsonwebtoken
 
 const app = express();
 const port = process.env.SERVICE_PORT || 3001;
+const jwtSecret = process.env.JWT_SECRET; // Get JWT secret from env
 
 // Middleware
-app.use(cors()); // Enable CORS for all routes
-app.use(express.json()); // For parsing application/json
+app.use(cors());
+app.use(express.json());
 
-// Database connection pool
+// Database connection pool (same as before)
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -24,28 +26,49 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Test DB connection
+// Test DB connection (same as before)
 pool.getConnection()
   .then(connection => {
-    console.log('Connected to MySQL database!');
-    connection.release(); // Release connection back to pool
+    console.log('Organization Service: Connected to MySQL database!');
+    connection.release();
   })
   .catch(err => {
-    console.error('Error connecting to database:', err.stack);
-    process.exit(1); // Exit if DB connection fails
+    console.error('Organization Service: Error connecting to database:', err.stack);
+    process.exit(1);
   });
+
+// --- JWT Authentication Middleware for Organization Service ---
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (token == null) return res.status(401).json({ message: 'Authentication token required.' });
+
+  jwt.verify(token, jwtSecret, (err, user) => {
+    if (err) {
+      console.error("Organization Service JWT verification error:", err);
+      // For a production app, differentiate between malformed and expired tokens
+      return res.status(403).json({ message: 'Invalid or expired token.' });
+    }
+    req.user = user; // Attach user payload (e.g., { id: 1, username: 'testuser' }) to request
+    next();
+  });
+};
+
+// --- Apply authentication middleware to all organization routes ---
+// All routes below this line will require a valid JWT token
+app.use('/organizations', authenticateToken);
 
 // --- API Endpoints for Billing Organizations ---
 
 /**
  * @route POST /organizations
  * @desc Add a new billing organization
- * @access Public (for now, will be private with auth)
+ * @access Private (requires JWT)
  */
 app.post('/organizations', async (req, res) => {
   const { name, accountNumber, typicalDueDay, website, contactInfo } = req.body;
-  // TODO: Implement user authentication and get user_id from token
-  const user_id = 1; // Placeholder for now
+  const user_id = req.user.id; // Get user_id from the authenticated token!
 
   if (!name || !accountNumber) {
     return res.status(400).json({ message: 'Name and Account Number are required.' });
@@ -60,7 +83,7 @@ app.post('/organizations', async (req, res) => {
     res.status(201).json({
       message: 'Organization added successfully',
       organizationId: result.insertId,
-      organization: { id: result.insertId, name, accountNumber, typicalDueDay, website, contactInfo }
+      organization: { id: result.insertId, name, accountNumber, typicalDueDay, website, contactInfo, user_id }
     });
   } catch (error) {
     console.error('Error adding organization:', error);
@@ -74,11 +97,10 @@ app.post('/organizations', async (req, res) => {
 /**
  * @route GET /organizations
  * @desc Get all billing organizations for a user
- * @access Public (for now)
+ * @access Private (requires JWT)
  */
 app.get('/organizations', async (req, res) => {
-  // TODO: Implement user authentication and get user_id from token
-  const user_id = 1; // Placeholder for now
+  const user_id = req.user.id; // Get user_id from the authenticated token!
 
   try {
     const [rows] = await pool.execute(
@@ -95,12 +117,11 @@ app.get('/organizations', async (req, res) => {
 /**
  * @route GET /organizations/:id
  * @desc Get a single billing organization by ID
- * @access Public (for now)
+ * @access Private (requires JWT)
  */
 app.get('/organizations/:id', async (req, res) => {
   const { id } = req.params;
-  // TODO: Implement user authentication and get user_id from token
-  const user_id = 1; // Placeholder for now
+  const user_id = req.user.id; // Get user_id from the authenticated token!
 
   try {
     const [rows] = await pool.execute(
@@ -121,13 +142,12 @@ app.get('/organizations/:id', async (req, res) => {
 /**
  * @route PUT /organizations/:id
  * @desc Update a billing organization
- * @access Public (for now)
+ * @access Private (requires JWT)
  */
 app.put('/organizations/:id', async (req, res) => {
   const { id } = req.params;
   const { name, accountNumber, typicalDueDay, website, contactInfo } = req.body;
-  // TODO: Implement user authentication and get user_id from token
-  const user_id = 1; // Placeholder for now
+  const user_id = req.user.id; // Get user_id from the authenticated token!
 
   if (!name || !accountNumber) {
     return res.status(400).json({ message: 'Name and Account Number are required.' });
@@ -157,12 +177,11 @@ app.put('/organizations/:id', async (req, res) => {
 /**
  * @route DELETE /organizations/:id
  * @desc Delete a billing organization
- * @access Public (for now)
+ * @access Private (requires JWT)
  */
 app.delete('/organizations/:id', async (req, res) => {
   const { id } = req.params;
-  // TODO: Implement user authentication and get user_id from token
-  const user_id = 1; // Placeholder for now
+  const user_id = req.user.id; // Get user_id from the authenticated token!
 
   try {
     const [result] = await pool.execute(

@@ -84,3 +84,59 @@ You now have a fully functional Organization Service containerized and connected
 
 The bill_tracker_db includes a `users` table for the "Users Service" microservice will be responsible for user registration, login, and managing user profiles. It uses Node.js with Express to integrate secure password handling with JWT-based authentication.
 
+
+ Running and Testing the Secured Backend and Frontend
+
+    Rebuild and Restart Backend Services:
+    From your project root (where docker-compose.yml is), run:
+    Bash
+
+docker compose up --build -d
+
+This will rebuild the organization-service image with the updated code and restart its container.
+
+Verify Backend Logs:
+Check the logs for organization-service:
+Bash
+
+docker compose logs -f organization-service
+
+Ensure it starts without errors.
+
+Start React Frontend (if not already running):
+In a separate terminal, navigate to my-bill-tracker-frontend and run:
+Bash
+
+    npm run dev
+
+Test Flow:
+
+    Login: Open your browser to the frontend (http://localhost:5173/). You should be redirected to the login page. Log in with your registered testuser credentials.
+
+    Dashboard - Empty State (for new users):
+
+        If you log in with a new user (i.e., one that did not implicitly create organizations when user_id was hardcoded to 1), you should now see an empty list of organizations on the dashboard. This confirms the service is now filtering by the actual user_id.
+
+    Add Organization: Go to "Add Organization". Fill in details for a new organization and submit.
+
+        It should add successfully. Return to the dashboard. You should now see only this new organization (and any others you create for this specific user).
+
+    Logout and Login with Another User:
+
+        Create a new user account via the "Register" page.
+
+        Logout from the first user, and then log in with this new user.
+
+        You should see an empty list of organizations again, demonstrating that the data is now strictly segregated by user_id. The organizations created by testuser are not visible to this new user.
+
+    Test API Directly (Optional - Postman/Curl):
+
+        Try fetching organizations from http://localhost:3001/organizations without an Authorization: Bearer <token> header. You should get a 401 Unauthorized response.
+
+        Try with a valid token from testuser. You should see testuser's organizations.
+
+        Try with a valid token from your second user. You should see the second user's organizations (or an empty array).
+
+Congratulations! Your Organization Service is now securely integrated with the User Service, and data access is correctly restricted to the authenticated user.
+
+Next, we should tackle the Bill Payment Service to start tracking actual monthly bills and update the dashboard. How does that sound?
