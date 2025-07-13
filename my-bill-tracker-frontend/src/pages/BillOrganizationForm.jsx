@@ -1,6 +1,6 @@
-//6. Form for adding or editing bill organization details.
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import config from '../config'; // Import the config
 import './Forms.css'; // Shared styles for forms
 
 function BillOrganizationForm() {
@@ -14,63 +14,115 @@ function BillOrganizationForm() {
     contactInfo: '',
   });
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (id) {
-      setIsEditing(true);
-      // In a real app, you'd fetch organization data by ID here:
-      // fetchOrganizationDetails(id).then(data => setFormData(data));
-      // For now, simulate fetching data for editing:
-      const simulatedOrg = {
-        name: 'Simulated Power Co.',
-        accountNumber: '123456789',
-        typicalDueDay: '20',
-        website: 'https://powerco.com',
-        contactInfo: '1-800-POWER',
-      };
-      setFormData(simulatedOrg);
-    } else {
-      setIsEditing(false);
-      setFormData({ // Reset form for new entry
-        name: '',
-        accountNumber: '',
-        typicalDueDay: '',
-        website: '',
-        contactInfo: '',
-      });
-    }
-  }, [id]);
+    const fetchOrganization = async () => {
+      if (id) {
+        setIsEditing(true);
+        try {
+          setLoading(true);
+          setError(null);
+          const response = await fetch(`${config.ORGANIZATION_API_BASE_URL}/${id}`);
+          if (!response.ok) {
+            if (response.status === 404) {
+              throw new Error('Organization not found.');
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          setFormData(data);
+        } catch (err) {
+          console.error("Failed to fetch organization:", err);
+          setError("Failed to load organization details. Please try again.");
+          // Optionally redirect to dashboard if fetch fails for editing
+          navigate('/');
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setIsEditing(false);
+        setFormData({ // Reset form for new entry
+          name: '',
+          accountNumber: '',
+          typicalDueDay: '',
+          website: '',
+          contactInfo: '',
+        });
+        setLoading(false); // No loading needed for new form
+      }
+    };
+
+    fetchOrganization();
+  }, [id, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isEditing) {
-      console.log('Updating organization:', formData);
-      // Call API to update organization
-    } else {
-      console.log('Adding new organization:', formData);
-      // Call API to add new organization
+    setError(null); // Clear previous errors
+
+    try {
+      const method = isEditing ? 'PUT' : 'POST';
+      const url = isEditing ? `${config.ORGANIZATION_API_BASE_URL}/${id}` : config.ORGANIZATION_API_BASE_URL;
+
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      alert(`Organization ${isEditing ? 'updated' : 'added'} successfully!`);
+      navigate('/'); // Go back to dashboard after submission
+    } catch (err) {
+      console.error('Error submitting organization:', err);
+      setError(`Failed to ${isEditing ? 'update' : 'add'} organization: ${err.message}`);
     }
-    alert(`${isEditing ? 'Updated' : 'Added'} organization: ${formData.name}`);
-    navigate('/'); // Go back to dashboard after submission
   };
 
-  const handleDelete = () => {
-    if (window.confirm(`Are you sure you want to delete ${formData.name}?`)) {
-      console.log('Deleting organization with ID:', id);
-      // Call API to delete organization
-      alert(`Deleted organization: ${formData.name}`);
+  const handleDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${formData.name}?`)) {
+      return;
+    }
+    setError(null); // Clear previous errors
+
+    try {
+      const response = await fetch(`${config.ORGANIZATION_API_BASE_URL}/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      alert(`Organization ${formData.name} deleted successfully!`);
       navigate('/');
+    } catch (err) {
+      console.error('Error deleting organization:', err);
+      setError(`Failed to delete organization: ${err.message}`);
     }
   };
+
+  if (loading && isEditing) {
+    return <div className="form-container">Loading organization details...</div>;
+  }
 
   return (
     <div className="form-container">
       <h2>{isEditing ? 'Edit Bill Organization' : 'Add New Bill Organization'}</h2>
+      {error && <p className="error-message">{error}</p>}
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="name">Organization Name:</label>

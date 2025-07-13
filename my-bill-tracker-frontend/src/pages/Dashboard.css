@@ -76,3 +76,61 @@
   background-color: #e8f8f5; /* Lighter green background for paid items */
   border-color: #d1f2eb;
 }
+
+.dashboard-section .bill-item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px; /* Space between items */
+}
+
+.bill-item .item-actions {
+  display: flex;
+  gap: 8px; /* Space between action links */
+  margin-top: 5px; /* Space from other text on smaller screens */
+  flex-wrap: wrap;
+}
+
+.action-link {
+  padding: 6px 10px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 0.85em;
+  transition: background-color 0.3s ease;
+  white-space: nowrap; /* Prevent wrapping within link */
+}
+
+.action-link.website-link {
+  background-color: #3498db; /* Blue */
+  color: white;
+}
+
+.action-link.website-link:hover {
+  background-color: #2980b9;
+}
+
+.action-link.edit-link {
+  background-color: #f39c12; /* Orange */
+  color: white;
+}
+
+.action-link.edit-link:hover {
+  background-color: #e67e22;
+}
+
+/* Ensure original record-link style is still present or defined */
+.dashboard-section .record-link {
+  background-color: #2ecc71; /* Green for record */
+  color: white;
+  padding: 8px 15px;
+  border-radius: 5px;
+  text-decoration: none;
+  font-size: 0.9em;
+  transition: background-color 0.3s ease;
+  margin-left: 10px;
+}
+
+.dashboard-section .record-link:hover {
+  background-color: #27ae60;
+}

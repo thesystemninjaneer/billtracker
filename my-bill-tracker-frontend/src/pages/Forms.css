@@ -79,3 +79,20 @@
   background-color: #c0392b;
   transform: translateY(-2px);
 }
+
+.error-message {
+  color: #e74c3c;
+  background-color: #fcebeb;
+  border: 1px solid #e74c3c;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.preselected-info {
+  margin-top: 5px;
+  font-size: 0.9em;
+  color: #666;
+  font-style: italic;
+}

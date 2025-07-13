@@ -1,69 +1,152 @@
 //7. Form for recording details of a monthly bill payment.
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import config from '../config'; // Import the config
 import './Forms.css'; // Shared styles for forms
 
 function RecordPaymentForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
-  const preselectedOrgName = queryParams.get('organization');
-  const preselectedAmount = queryParams.get('amount');
+  const preselectedOrgId = queryParams.get('organizationId');
+  const preselectedOrgName = queryParams.get('organizationName');
+  const preselectedAmount = queryParams.get('amount'); // If coming from upcoming bills
 
+  const [organizations, setOrganizations] = useState([]);
   const [formData, setFormData] = useState({
-    organization: preselectedOrgName || '', // Can be pre-filled from Dashboard link
+    organizationId: preselectedOrgId || '',
+    organizationName: preselectedOrgName || '', // Storing name for display
     dueDate: '',
     amountDue: preselectedAmount || '',
     datePaid: new Date().toISOString().split('T')[0], // Default to current date
     paymentConfirmationCode: '',
     amountPaid: preselectedAmount || '',
   });
-
-  // Placeholder for organizations to select from - will be fetched from API
-  const [organizations, setOrganizations] = useState([
-    { id: 1, name: 'Power Company' },
-    { id: 2, name: 'Water Utility' },
-    { id: 3, name: 'Cable/Internet' },
-    { id: 4, name: 'Credit Card A' },
-    { id: 5, name: 'Rent' },
-  ]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // In a real app, fetch available organizations from the Organization Service API here
-    // fetchOrganizations().then(data => setOrganizations(data));
-  }, []);
+    const fetchOrganizations = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch(config.ORGANIZATION_API_BASE_URL);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setOrganizations(data);
+
+        // If an organization was pre-selected by ID, ensure its name is also set
+        if (preselectedOrgId && data.length > 0) {
+          const foundOrg = data.find(org => org.id.toString() === preselectedOrgId);
+          if (foundOrg) {
+            setFormData(prev => ({
+              ...prev,
+              organizationName: foundOrg.name,
+              organizationId: foundOrg.id, // Ensure ID is correct type/value
+            }));
+          }
+        } else if (preselectedOrgName && data.length > 0) { // Fallback for name if no ID
+             const foundOrg = data.find(org => org.name === preselectedOrgName);
+             if (foundOrg) {
+                 setFormData(prev => ({
+                     ...prev,
+                     organizationId: foundOrg.id,
+                 }));
+             }
+        }
+
+
+      } catch (err) {
+        console.error("Failed to fetch organizations for dropdown:", err);
+        setError("Failed to load organizations for payment selection. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrganizations();
+  }, [preselectedOrgId, preselectedOrgName]); // Re-run if query params change
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === "organizationId") {
+      const selectedOrg = organizations.find(org => org.id.toString() === value);
+      setFormData(prev => ({
+        ...prev,
+        organizationId: value,
+        organizationName: selectedOrg ? selectedOrg.name : ''
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Recording payment:', formData);
-    // Call API to record the payment
-    alert(`Payment recorded for ${formData.organization}!`);
+    setError(null);
+
+    // In the future, this will go to the Bill Payment Service
+    const paymentData = {
+      organizationId: formData.organizationId,
+      // We don't need to send organizationName to the backend, it knows by ID
+      dueDate: formData.dueDate,
+      amountDue: parseFloat(formData.amountDue),
+      datePaid: formData.datePaid,
+      paymentConfirmationCode: formData.paymentConfirmationCode,
+      amountPaid: parseFloat(formData.amountPaid),
+    };
+
+    console.log('Simulating recording payment:', paymentData);
+    alert(`Payment recorded for ${formData.organizationName}! (Simulated)`);
     navigate('/'); // Go back to dashboard after submission
+    // Actual API call would look like this:
+    /*
+    try {
+      const response = await fetch(config.BILL_PAYMENT_API_BASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paymentData),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to record payment.');
+      }
+      alert(`Payment recorded for ${formData.organizationName} successfully!`);
+      navigate('/');
+    } catch (err) {
+      console.error('Error recording payment:', err);
+      setError(`Failed to record payment: ${err.message}`);
+    }
+    */
   };
+
+  if (loading) {
+    return <div className="form-container">Loading organizations for payment form...</div>;
+  }
 
   return (
     <div className="form-container">
       <h2>Record Monthly Bill Payment</h2>
+      {error && <p className="error-message">{error}</p>}
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="organization">Billing Organization:</label>
+          <label htmlFor="organizationId">Billing Organization:</label>
           <select
-            id="organization"
-            name="organization"
-            value={formData.organization}
+            id="organizationId"
+            name="organizationId"
+            value={formData.organizationId}
             onChange={handleChange}
             required
+            disabled={!!preselectedOrgId} // Disable if pre-selected
           >
             <option value="">Select an Organization</option>
             {organizations.map(org => (
-              <option key={org.id} value={org.name}>{org.name}</option>
+              <option key={org.id} value={org.id}>{org.name}</option>
             ))}
           </select>
+          {preselectedOrgId && <p className="preselected-info">Selected: {formData.organizationName}</p>}
         </div>
         <div className="form-group">
           <label htmlFor="dueDate">Bill Due Date:</label>

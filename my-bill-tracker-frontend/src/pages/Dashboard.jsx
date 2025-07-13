@@ -1,40 +1,86 @@
-//4. This page will display upcoming bills and recently paid bills. We'll use placeholder data for now.
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import config from '../config'; // Import the config
 import './Dashboard.css'; // Component-specific styles
 
 function Dashboard() {
-  // Placeholder data - this will come from API calls later
-  const [upcomingBills, setUpcomingBills] = useState([
-    { id: 1, organization: 'Power Company', amount: 120.50, dueDate: '2025-07-20' },
-    { id: 2, organization: 'Water Utility', amount: 45.00, dueDate: '2025-07-25' },
-    { id: 3, organization: 'Cable/Internet', amount: 80.00, dueDate: '2025-08-01' },
-  ]);
+  const [organizations, setOrganizations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [recentlyPaidBills, setRecentlyPaidBills] = useState([
-    { id: 101, organization: 'Credit Card A', amount: 350.00, paidDate: '2025-07-05', confirmation: 'CCXYZ123' },
-    { id: 102, organization: 'Rent', amount: 1500.00, paidDate: '2025-07-01', confirmation: 'RENTCONF99' },
-  ]);
+  // Placeholder data for upcoming/recently paid bills (will be from Bill Payment Service later)
+  const [upcomingBills, setUpcomingBills] = useState([]);
+  const [recentlyPaidBills, setRecentlyPaidBills] = useState([]);
 
-  // In a real app, you'd fetch data here:
+
   useEffect(() => {
-    // fetchDataFromAPI();
+    const fetchOrganizations = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch(config.ORGANIZATION_API_BASE_URL);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setOrganizations(data);
+      } catch (err) {
+        console.error("Failed to fetch organizations:", err);
+        setError("Failed to load organizations. Please ensure the backend service is running.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrganizations();
+    // In the future, fetch upcomingBills and recentlyPaidBills from BillPaymentService here
+    // fetchUpcomingBills();
+    // fetchRecentlyPaidBills();
   }, []);
+
+  if (loading) {
+    return <div className="dashboard-container">Loading dashboard...</div>;
+  }
 
   return (
     <div className="dashboard-container">
       <h2>Dashboard</h2>
 
+      {error && <p className="error-message">{error}</p>}
+
+      <section className="dashboard-section bill-organizations">
+        <h3>🏠 Your Bill Organizations</h3>
+        {organizations.length === 0 ? (
+          <p>No billing organizations added yet. <Link to="/add-organization">Add one now!</Link></p>
+        ) : (
+          <ul>
+            {organizations.map(org => (
+              <li key={org.id} className="bill-item">
+                <span className="bill-org">{org.name}</span>
+                <span>Account: {org.accountNumber}</span>
+                <span>Due Day: {org.typicalDueDay || 'N/A'}</span>
+                <div className="item-actions">
+                  <a href={org.website} target="_blank" rel="noopener noreferrer" className="action-link website-link">Visit Website</a>
+                  <Link to={`/edit-organization/${org.id}`} className="action-link edit-link">Edit</Link>
+                  {/* Link to record payment for this organization (will refine later) */}
+                  <Link to={`/record-payment?organizationId=${org.id}&organizationName=${org.name}`} className="action-link record-link">Record Payment</Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Placeholder for Upcoming and Recently Paid Bills - will be populated by Bill Payment Service */}
       <section className="dashboard-section upcoming-bills">
         <h3>📅 Upcoming Bills Due</h3>
         {upcomingBills.length === 0 ? (
-          <p>No upcoming bills. You're all caught up!</p>
+          <p>No upcoming bills to display yet. Record a payment or add new bills!</p>
         ) : (
           <ul>
             {upcomingBills.map(bill => (
               <li key={bill.id} className="bill-item">
                 <span className="bill-org">{bill.organization}</span> - ${bill.amount.toFixed(2)} - Due: {bill.dueDate}
-                {/* Link to record payment for this bill */}
                 <Link to={`/record-payment?organization=${bill.organization}&amount=${bill.amount}`} className="record-link">Record Payment</Link>
               </li>
             ))}
