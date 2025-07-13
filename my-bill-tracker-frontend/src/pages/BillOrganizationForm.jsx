@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import config from '../config'; // Import the config
 import './Forms.css'; // Shared styles for forms
+import { useAuth } from '../context/AuthContext'; // Import useAuth hook
 
 function BillOrganizationForm() {
-  const { id } = useParams(); // Used for editing an existing organization
+  const { id } = useParams();
   const navigate = useNavigate();
+  const { authAxios } = useAuth(); // Get authAxios from context
+ 
   const [formData, setFormData] = useState({
     name: '',
     accountNumber: '',
@@ -24,7 +27,9 @@ function BillOrganizationForm() {
         try {
           setLoading(true);
           setError(null);
-          const response = await fetch(`${config.ORGANIZATION_API_BASE_URL}/${id}`);
+          // Use authAxios for authenticated GET request
+          //.const response = await fetch(`${config.ORGANIZATION_API_BASE_URL}/${id}`);
+          const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}/${id}`);
           if (!response.ok) {
             if (response.status === 404) {
               throw new Error('Organization not found.');
@@ -36,8 +41,7 @@ function BillOrganizationForm() {
         } catch (err) {
           console.error("Failed to fetch organization:", err);
           setError("Failed to load organization details. Please try again.");
-          // Optionally redirect to dashboard if fetch fails for editing
-          navigate('/');
+          navigate('/'); // Redirect on error or not found
         } finally {
           setLoading(false);
         }
@@ -55,8 +59,8 @@ function BillOrganizationForm() {
     };
 
     fetchOrganization();
-  }, [id, navigate]);
-
+  }, [id, navigate, authAxios]); // Add authAxios to dependency array
+  
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -70,10 +74,12 @@ function BillOrganizationForm() {
       const method = isEditing ? 'PUT' : 'POST';
       const url = isEditing ? `${config.ORGANIZATION_API_BASE_URL}/${id}` : config.ORGANIZATION_API_BASE_URL;
 
-      const response = await fetch(url, {
+      // Use authAxios for authenticated POST/PUT request
+      const response = await authAxios(url, {
         method: method,
         headers: {
           'Content-Type': 'application/json',
+          // Authorization header is handled by authAxios
         },
         body: JSON.stringify(formData),
       });
@@ -84,7 +90,7 @@ function BillOrganizationForm() {
       }
 
       alert(`Organization ${isEditing ? 'updated' : 'added'} successfully!`);
-      navigate('/'); // Go back to dashboard after submission
+      navigate('/');
     } catch (err) {
       console.error('Error submitting organization:', err);
       setError(`Failed to ${isEditing ? 'update' : 'add'} organization: ${err.message}`);
@@ -98,8 +104,10 @@ function BillOrganizationForm() {
     setError(null); // Clear previous errors
 
     try {
-      const response = await fetch(`${config.ORGANIZATION_API_BASE_URL}/${id}`, {
+      // Use authAxios for authenticated DELETE request
+      const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}/${id}`, {
         method: 'DELETE',
+        // Authorization header is handled by authAxios
       });
 
       if (!response.ok) {

@@ -12,3 +12,13 @@
   width: 100%;
   box-sizing: border-box; /* Include padding in width calculation */
 }
+
+/* frontend loading style */
+.app-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 1.5em;
+  color: #3498db;
+}

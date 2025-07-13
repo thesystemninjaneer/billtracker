@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import config from '../config'; // Import the config
 import './Dashboard.css'; // Component-specific styles
+import { useAuth } from '../context/AuthContext'; // Import useAuth hook
 
 function Dashboard() {
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { authAxios } = useAuth(); // Get authAxios from context
 
   // Placeholder data for upcoming/recently paid bills (will be from Bill Payment Service later)
   const [upcomingBills, setUpcomingBills] = useState([]);
@@ -18,7 +20,8 @@ function Dashboard() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(config.ORGANIZATION_API_BASE_URL);
+        // Use authAxios for authenticated GET request
+        const response = await authAxios(config.ORGANIZATION_API_BASE_URL);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -36,7 +39,7 @@ function Dashboard() {
     // In the future, fetch upcomingBills and recentlyPaidBills from BillPaymentService here
     // fetchUpcomingBills();
     // fetchRecentlyPaidBills();
-  }, []);
+  }, [authAxios]); // Add authAxios to dependency array
 
   if (loading) {
     return <div className="dashboard-container">Loading dashboard...</div>;

@@ -245,5 +245,85 @@ observe the following:
 
     Record Payment Form: The "Billing Organization" dropdown will now be populated with organizations fetched from your backend. The payment submission itself is still simulated, as we haven't built the Bill Payment Service yet.
 
+## Integration of User Service with Frontend
 
-    
+
+integration the User Service, we'll need to:
+
+1. Authentication-related Pages/Components: forms for user registration and login.
+2. App.jsx: routing for the new authentication pages.
+3. Authentication Logic: Handle form submissions, send requests to the User Service, store the JWT token, and manage user state (logged in/out).
+4. Protect Frontend Routes: certain parts of the application (like the dashboard and forms) are only accessible to authenticated users.
+5. API Base URL: Add the User Service API URL to our config.js
+
+configuration:
+
+1. frontend config
+
+User Service API base URL in my-bill-tracker-frontend/src/config.js.
+
+2. auth client
+
+manage user authentication state globally across the app using React Context in `my-bill-tracker-frontend/src/context/AuthContext.jsx`.
+
+3. auth pages
+
+- `my-bill-tracker-frontend/src/pages/Register.jsx` 
+- `my-bill-tracker-frontend/src/pages/Login.jsx`
+
+4. Header integration with auth pages
+
+The header shows login/logout options based on authentication status with a style for the logout button and user info in `src/components/Header.css`
+
+5. auth wrapped application
+
+the application is wrapped with AuthProvider and implements protected routes using a new ProtectedRoute component in `my-bill-tracker-frontend/src/App.jsx`. simple loading style in `src/App.css`.
+
+6. authentication api calls
+
+API Calls to use authAxios (Critical!)
+
+all API calls to protected backend services (like the Organization Service) must include the JWT token. `my-bill-tracker-frontend/src/pages/BillOrganizationForm.jsx` uses the authAxios function from AuthContext.
+
+## Running frontend with user service
+
+1. Ensure all backend services are running:
+
+```
+docker compose up --build -d
+```
+
+Confirm bill-tracker-mysql, bill-tracker-organization-service, and bill-tracker-user-service are all running.
+
+2. Start React frontend:
+Open a new terminal, navigate into your frontend directory:
+Bash
+```
+cd my-bill-tracker-frontend
+npm run dev
+```
+3. Open your browser to the frontend URL (e.g., http://localhost:5173/).
+
+## Test Flow:
+
+    Initial Load: You should be redirected to the /login page immediately because no user is authenticated.
+
+    Register: Click "Register". Fill in a username, email, and password. Submit the form.
+
+        If successful, you should be redirected to the Dashboard. Your username should appear in the header.
+
+        If it fails (e.g., duplicate username/email), you'll see an error message.
+
+    Logout: Click the "Logout" button in the header. You should be redirected back to the /login page.
+
+    Login: Enter the credentials of the user you just registered. Submit the form.
+
+        If successful, you'll be on the Dashboard, seeing your registered organizations (since user_id is still hardcoded to 1 in the organization service, which matches the first user registered).
+
+    Test Protected Routes: Try to directly navigate to /add-organization or /record-payment without being logged in. You should be redirected to /login. Once logged in, you should be able to access them.
+
+    Add/Edit/Delete Organizations: Now that you are logged in, try adding, editing, and deleting organizations. These actions should now correctly send the Authorization header to your Organization Service.
+
+You now have a fully authenticated frontend capable of registering and logging in users, and all interactions with the Organization Service are protected by JWT tokens.
+
+The next crucial step is to update the Organization Service to use the actual user_id extracted from the JWT token instead of the hardcoded user_id = 1. This w

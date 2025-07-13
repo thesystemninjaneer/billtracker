@@ -32,3 +32,26 @@
 .header .nav-links a:hover {
   color: #61dafb; /* React blue */
 }
+
+/* Afor logout button in header.jsx */
+.header .nav-links .logout-btn {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1.1em;
+  margin-left: 20px;
+  transition: background-color 0.3s ease;
+}
+
+.header .nav-links .logout-btn:hover {
+  background-color: #c0392b;
+}
+
+.header .nav-links .user-info {
+  color: #a0a0a0;
+  margin-left: 20px;
+  font-size: 1.1em;
+}

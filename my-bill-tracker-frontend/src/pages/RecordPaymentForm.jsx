@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import config from '../config'; // Import the config
 import './Forms.css'; // Shared styles for forms
+import { useAuth } from '../context/AuthContext'; // Import useAuth hook
 
 function RecordPaymentForm() {
   const navigate = useNavigate();
@@ -24,13 +25,15 @@ function RecordPaymentForm() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { authAxios } = useAuth(); // Get authAxios from context
 
   useEffect(() => {
     const fetchOrganizations = async () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(config.ORGANIZATION_API_BASE_URL);
+        // Use authAxios for authenticated GET request
+        const response = await authAxios(config.ORGANIZATION_API_BASE_URL);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -47,7 +50,7 @@ function RecordPaymentForm() {
               organizationId: foundOrg.id, // Ensure ID is correct type/value
             }));
           }
-        } else if (preselectedOrgName && data.length > 0) { // Fallback for name if no ID
+        } else if (preselectedOrgName && data.length > 0) {
              const foundOrg = data.find(org => org.name === preselectedOrgName);
              if (foundOrg) {
                  setFormData(prev => ({
@@ -57,17 +60,16 @@ function RecordPaymentForm() {
              }
         }
 
-
       } catch (err) {
         console.error("Failed to fetch organizations for dropdown:", err);
-        setError("Failed to load organizations for payment selection. Please try again.");
+        setError("Failed to load organizations for payment selection. Please ensure you are logged in and the backend service is running.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchOrganizations();
-  }, [preselectedOrgId, preselectedOrgName]); // Re-run if query params change
+  }, [preselectedOrgId, preselectedOrgName, authAxios]); // Add authAxios to dependency array
 
   const handleChange = (e) => {
     const { name, value } = e.target;
