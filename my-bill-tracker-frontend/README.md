@@ -326,4 +326,95 @@ npm run dev
 
 You now have a fully authenticated frontend capable of registering and logging in users, and all interactions with the Organization Service are protected by JWT tokens.
 
-The next crucial step is to update the Organization Service to use the actual user_id extracted from the JWT token instead of the hardcoded user_id = 1. This w
+The next crucial step is to update the Organization Service to use the actual user_id extracted from the JWT token instead of the hardcoded user_id = 1. 
+
+1.  Update Frontend Configuration
+
+Add the Bill Payment Service API base URL to my-bill-tracker-frontend/src/config.js.
+
+my-bill-tracker-frontend/src/config.js
+
+2.  Create my-bill-tracker-frontend/src/pages/AddBillForm.jsx
+
+This new form will allow users to define recurring bill entries (e.g., "Electricity Bill" for "Dominion Energy" due on the 20th of each month).
+
+Add info-message style to src/pages/Forms.css
+
+3. Update my-bill-tracker-frontend/src/pages/RecordPaymentForm.jsx
+
+This form will now save payments to the Bill Payment Service. It will allow linking a payment to an existing recurring bill entry if selected.
+
+4. Update my-bill-tracker-frontend/src/pages/Dashboard.jsx
+
+The Dashboard will now fetch and display real upcoming and recently paid bills from your Bill Payment Service.
+
+Add new styles for dashboard sections to src/pages/Dashboard.css:
+
+5. Update my-bill-tracker-frontend/src/App.jsx
+
+Add the route for the new AddBillForm
+
+Add new styles for dashboard sections to src/pages/Dashboard.css:
+
+6.  Update my-bill-tracker-frontend/src/components/Header.jsx
+
+Add a link to the new "Add Bill" form.
+
+## Running the Integrated Frontend
+
+    Ensure all backend services are running:
+    From your project root (where docker-compose.yml is), run:
+    Bash
+
+docker compose up --build -d
+
+Confirm bill-tracker-mysql, bill-tracker-organization-service, and bill-tracker-bill-payment-service are all running and healthy.
+
+Start your React frontend:
+Open a new terminal, navigate into your frontend directory:
+Bash
+
+    cd my-bill-tracker-frontend
+    npm run dev
+
+    Open your browser to the frontend URL (e.g., http://localhost:5173/).
+
+Test Flow:
+
+    Login/Register: If not already logged in, register a new user or log in with an existing one.
+
+    Add Organization: Go to "Add Org" and add a new organization (e.g., "Electricity Company").
+
+    Add Bill Entry: Go to "Add Bill".
+
+        Select the organization you just created.
+
+        Enter a "Bill Name" (e.g., "Monthly Electricity").
+
+        Provide a "Typical Due Day" and "Typical Amount".
+
+        Submit the form.
+
+    Record Payment: Go to "Record Payment".
+
+        Select the organization.
+
+        You should now see the "Link to Recurring Bill Entry" dropdown populated with "Monthly Electricity". Select it.
+
+        Fill in Due Date, Amount Due, Date Paid, Amount Paid, and Confirmation Code.
+
+        Submit the form.
+
+    Dashboard View: Navigate back to the Dashboard.
+
+        You should now see the organization listed.
+
+        More importantly, the "Upcoming Bills Due" and "Recently Paid Bills" sections should now display the payment you just recorded (it will appear in "Recently Paid Bills" because you marked it as paid with a datePaid).
+
+        Try adding another bill and recording a payment for a future due date, and you should see it appear in "Upcoming Bills Due".
+
+You now have a fully integrated frontend interacting with your Bill Payment Service, allowing users to track their recurring bills and individual payments. This significantly enhances the functionality of your application!
+
+What's next? We could refine the existing services, add more features (like bill reminders, or editing recurring bills/payments from the frontend), or consider deploying your application.
+
+

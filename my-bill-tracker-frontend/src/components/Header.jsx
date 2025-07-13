@@ -1,11 +1,11 @@
 //3. A simple navigation header to move between sections.
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // Import useAuth
-import './Header.css'; // Component-specific styles
+import { useAuth } from '../context/AuthContext';
+import './Header.css';
 
 function Header() {
-  const { isAuthenticated, logout, user } = useAuth(); // Get auth state and logout function
+  const { isAuthenticated, logout, user } = useAuth();
 
   return (
     <header className="header">
@@ -15,7 +15,8 @@ function Header() {
           {isAuthenticated ? (
             <>
               <Link to="/">Dashboard</Link>
-              <Link to="/add-organization">Add Organization</Link>
+              <Link to="/add-organization">Add Org</Link>
+              <Link to="/add-bill">Add Bill</Link> {/* New link */}
               <Link to="/record-payment">Record Payment</Link>
               <span className="user-info">Hello, {user?.username}!</span>
               <button onClick={logout} className="logout-btn">Logout</button>

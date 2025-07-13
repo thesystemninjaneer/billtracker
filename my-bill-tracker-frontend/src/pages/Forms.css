@@ -96,3 +96,14 @@
   color: #666;
   font-style: italic;
 }
+
+.info-message {
+  color: #3498db;
+  background-color: #e8f5fd;
+  border: 1px solid #3498db;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+

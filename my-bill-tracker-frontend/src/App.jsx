@@ -1,22 +1,21 @@
-//2. This is the main application file, where we'll set up the routing for different pages.
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import BillOrganizationForm from './pages/BillOrganizationForm.jsx';
 import RecordPaymentForm from './pages/RecordPaymentForm.jsx';
-import Register from './pages/Register.jsx'; // New
-import Login from './pages/Login.jsx';     // New
+import AddBillForm from './pages/AddBillForm.jsx'; // New import
+import Register from './pages/Register.jsx';
+import Login from './pages/Login.jsx';
 import NotFound from './pages/NotFound.jsx';
-import { AuthProvider, useAuth } from './context/AuthContext.jsx'; // New: AuthProvider and useAuth hook
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import './App.css';
 
-// ProtectedRoute component to guard routes
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return <div className="app-loading">Loading application...</div>; // Simple loading indicator
+    return <div className="app-loading">Loading application...</div>;
   }
 
   if (!isAuthenticated) {
@@ -62,6 +61,14 @@ function AppContent() {
             }
           />
           <Route
+            path="/add-bill" {/* New route for AddBillForm */}
+            element={
+              <ProtectedRoute>
+                <AddBillForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/record-payment"
             element={
               <ProtectedRoute>
@@ -69,14 +76,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/record-payment/:organizationId"
-            element={
-              <ProtectedRoute>
-                <RecordPaymentForm />
-              </ProtectedRoute>
-            }
-          />
+          {/* Note: /record-payment/:organizationId is handled by the query params on /record-payment now */}
 
           {/* Catch-all for undefined routes */}
           <Route path="*" element={<NotFound />} />
@@ -89,7 +89,7 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AuthProvider> {/* Wrap the entire app content with AuthProvider */}
+      <AuthProvider>
         <div className="app-container">
           <AppContent />
         </div>

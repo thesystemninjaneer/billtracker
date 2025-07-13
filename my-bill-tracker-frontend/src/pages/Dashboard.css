@@ -134,3 +134,92 @@
 .dashboard-section .record-link:hover {
   background-color: #27ae60;
 }
+
+.dashboard-section h3 {
+  color: #34495e;
+  border-bottom: 2px solid #ecf0f1;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashboard-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.dashboard-section .bill-item {
+  background-color: #fdfdfd;
+  border: 1px solid #e0e0e0;
+  border-left: 5px solid #3498db; /* Default border color */
+  padding: 15px 20px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-section .bill-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.dashboard-section .bill-item.upcoming-item {
+  border-left-color: #f39c12; /* Orange for upcoming */
+}
+
+.dashboard-section .bill-item.paid-item {
+  border-left-color: #2ecc71; /* Green for paid */
+  opacity: 0.9;
+}
+
+.bill-item .bill-org {
+  font-weight: bold;
+  color: #2c3e50;
+  font-size: 1.1em;
+}
+
+.bill-item .bill-name {
+    color: #555;
+    font-style: italic;
+}
+
+.bill-item .due-date,
+.bill-item .paid-date {
+  color: #7f8c8d;
+  font-size: 0.9em;
+  margin-left: 5px;
+}
+
+.bill-item .confirmation-code {
+  background-color: #ecf0f1;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  color: #555;
+  margin-left: 10px;
+}
+
+/* Responsive adjustments for bill-item */
+@media (max-width: 768px) {
+  .dashboard-section .bill-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .bill-item > span {
+    width: 100%;
+    margin-bottom: 5px;
+  }
+  .bill-item .item-actions {
+    width: 100%;
+    justify-content: flex-start;
+    margin-top: 10px;
+  }
+}
