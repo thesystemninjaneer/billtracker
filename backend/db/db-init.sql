@@ -33,9 +33,6 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Use the database specified in docker-compose.yml
-USE bill_tracker_db;
-
 -- Create the bills table for recurring bill information
 CREATE TABLE bills (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -58,7 +55,7 @@ CREATE TABLE bills (
 CREATE TABLE payments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL, -- Links to the users table
-    bill_id INT NOT NULL, -- Links to the bills table (optional, can be NULL if standalone payment)
+    bill_id INT NULL, -- Links to the bills table (optional, can be NULL if standalone payment)
     organization_id INT NOT NULL, -- Links to the organizations table
     due_date DATE NOT NULL,
     amount_due DECIMAL(10, 2) NOT NULL,

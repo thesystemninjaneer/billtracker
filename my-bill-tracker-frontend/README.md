@@ -215,14 +215,14 @@ The`preselected-info` block in src/pages/Forms.css is a simple style for presele
 
 ## Running the Integrated Application
 
-1. Backennd
+1. Backend
 
 Example code To run the integrated application
 ```
 docker compose up --build -d
 ```
 
-2. Start frontemd
+2. Start frontend
 
 ```
 cd my-bill-tracker-frontend
@@ -418,3 +418,12 @@ You now have a fully integrated frontend interacting with your Bill Payment Serv
 What's next? We could refine the existing services, add more features (like bill reminders, or editing recurring bills/payments from the frontend), or consider deploying your application.
 
 
+## Local Development / Contributing
+
+Here is the order to follow when building and testing individual service during local development.
+
+1. [backend db](../backend/db/README.md)
+2. [backend user-service](../backend/user-ervice/README.md)
+3. [backend organization-service](../backend/organization-service/README.md)
+4. [backend bill-payment-service](../backend/bill-payment-service/README.md)
+5. [frontend](../my-bill-tracker-frontend/README.md)
