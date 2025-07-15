@@ -21,7 +21,7 @@ main application file: `backend/user-service/server.js`.
 
 4. containerized user service
 
-The Dockerfile in backend/user-service conatineries the service.
+The Dockerfile in backend/user-service containerizes the service.
 
 5. Integrated User Service 
 
