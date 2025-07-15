@@ -1,16 +1,12 @@
 # Bill Payment Service
 
-The Bill Payment Service will allow users to:
+The Bill Payment Service  allows users to:
+- Add new bill entries associated with an organization.
+- View upcoming and past bill payments.
+- Update bill details (e.g., amount due, due date).
+- Record a payment for a specific bill, marking it as paid and storing payment details.
 
-    Add new bill entries associated with an organization.
-
-    View upcoming and past bill payments.
-
-    Update bill details (e.g., amount due, due date).
-
-    Record a payment for a specific bill, marking it as paid and storing payment details.
-
-We'll follow the same pattern: database schema, service setup, API endpoints, and Dockerization.
+This service design follows the same patterns as each of the other app services: database schema, service setup, API endpoints, and Dockerization.
 
 1. MySQL Schema for Bills
 
@@ -24,136 +20,166 @@ payments table: Stores specific instances of a bill (e.g., "Dominion Energy bill
 
 Foreign Keys: We establish relationships between users, organizations, and these new tables. ON DELETE CASCADE means if a user or organization is deleted, their associated bills and payments are also deleted. ON DELETE SET NULL for bill_id in payments ensures that if a recurring bill is deleted, the individual payment records associated with it aren't lost, just disassociated from the recurring entry.
 
+2. Bill Payment Service Microservice Setup
 
-2.Bill Payment Service Microservice Setup
-
-folder: backend/bill-payment-service
-l2 dotenv cors jsonwebtoken
+- folder: backend/bill-payment-service
+- l2 dotenv cors jsonwebtoken
 
 3. Configuration (.env file)
 
-Create a .env file in backend/bill-payment-service:
-
-backend/bill-payment-service/.env
+- .env file in backend/bill-payment-service
+- backend/bill-payment-service/.env
 
 4. Bill Payment Service Code
 
-Create the main application file: backend/bill-payment-service/server.js
+- main application file: backend/bill-payment-service/server.js
 
 5.  Dockerize the Bill Payment Service
 
-Create a Dockerfile in backend/bill-payment-service:
-
-backend/bill-payment-service/Dockerfile
+- Dockerfile in backend/bill-payment-service
+    - backend/bill-payment-service/Dockerfile
 
 6. Update docker-compose.yml
 
-Add the Bill Payment Service to your docker-compose.yml.
+- Bill Payment Service defined in docker-compose.yml.
+  - docker-compose.yml (updated with bill-payment-service)
 
-docker-compose.yml (updated with bill-payment-service)
 
-Running and Testing the Bill Payment Service
+## Run and Test the Bill Payment Service
 
-    Rebuild and Restart All Backend Services:
-    From your project root (where docker-compose.yml is), run:
-    Bash
+Make sure to have first completed the backend/db, backend/user-service, backend/organizations-service README.md build/test instructions before starting these.
 
-docker compose up --build -d
+1. Rebuild and Restart All Backend Services:
+2. From your project root (where docker-compose.yml is), run the following to rebuild the bill-payment-service image and restart all services.
+   ```
+   ./billtracker$ docker compose -f my-bill-tracker/docker-compose.yaml up --build -d
+   ```
+3. Verify Backend Logs to confirm it starts without errors by checking the logs for bill-payment-service:
+     ```
+     ./billtracker$ docker logs -f bill-tracker-bill-payment-service
+     ```
+4. Test the API Endpoints (using Postman/Insomnia/curl):
 
-This will rebuild the bill-payment-service image and restart all services.
-
-Verify Backend Logs:
-Check the logs for bill-payment-service:
-Bash
-
-    docker compose logs -f bill-payment-service
-
-    Ensure it starts without errors.
-
-Test the API Endpoints (using Postman/Insomnia/curl):
-
-The base URL for the Bill Payment Service is http://localhost:3002. Remember to include the Authorization: Bearer <YOUR_JWT_TOKEN> header for all requests (get your token by logging in via the frontend or using the User Service /login endpoint).
+The base URL for the Bill Payment Service is http://localhost:3002. Remember to include the `Authorization: Bearer <YOUR_JWT_TOKEN>` header for all requests (get your token by logging in via the frontend or using the User Service /login endpoint).
 
 Bills (Recurring Entries)
 
-    Add Bill (POST):
-
-        URL: http://localhost:3002/bills
-
-        Method: POST
-
-        Headers: Content-Type: application/json, Authorization: Bearer YOUR_TOKEN
-
-        Body (JSON):
-        JSON
-
+- Add Bill (POST):
+  - URL: http://localhost:3002/bills
+  - Method: POST
+  - Headers: Content-Type: application/json, Authorization: Bearer YOUR_TOKEN
+  - Body (JSON):
+    ```json
     {
-        "organizationId": 1,        // Use an ID from an organization you've created for your user
+        "organizationId": 1,        // Use an ID from an organization you have created for your user
         "billName": "Electricity Bill",
         "dueDay": 20,
         "typicalAmount": 150.75,
         "frequency": "monthly",
         "notes": "Covers lights and heating"
     }
-
-Get All Bills (GET):
-
-    URL: http://localhost:3002/bills
-
-    Method: GET
-
-    Headers: Authorization: Bearer YOUR_TOKEN
-
-Get Single Bill (GET):
-
-    URL: http://localhost:3002/bills/1 (replace 1 with an actual bill ID)
-
-    Method: GET
-
-    Headers: Authorization: Bearer YOUR_TOKEN
-
-Update Bill (PUT):
-
-    URL: http://localhost:3002/bills/1
-
-    Method: PUT
-
-    Headers: Content-Type: application/json, Authorization: Bearer YOUR_TOKEN
-
-    Body (JSON - example update):
-    JSON
-
-        {
+    ```
+  - Ex
+    ```sh
+    USER='{ "username": "testuser", "email": "test@example.com", "password": "password123" }'
+    TOKEN=$(curl -s http://localhost:3000/login -X POST -d "$USER" -H 'Content-Type: application/json' | jq -r .token)
+    DATA='{ "organizationId": 1, "billName": "Electricity Bill", "dueDay": 20, "typicalAmount": 150.75, "frequency": "monthly", "notes": "Covers lights and heating" }'
+    curl http://localhost:3002/bills -X POST -d "$DATA" -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"  | jq
+    % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                    Dload  Upload   Total   Spent    Left  Speed
+    100   368  100   212  100   156   3424   2520 --:--:-- --:--:-- --:--:--  5935
+    {
+        "message": "Bill entry added successfully",
+        "billId": 1,
+        "bill": {
+            "id": 1,
             "organizationId": 1,
             "billName": "Electricity Bill",
-            "dueDay": 25,
-            "typicalAmount": 160.00,
+            "dueDay": 20,
+            "typicalAmount": 150.75,
             "frequency": "monthly",
-            "notes": "Covers lights and heating (updated)",
-            "isActive": true
+            "notes": "Covers lights and heating"
         }
-
-    Delete Bill (DELETE):
-
-        URL: http://localhost:3002/bills/1
-
-        Method: DELETE
-
-        Headers: Authorization: Bearer YOUR_TOKEN
-
-Payments (Individual Records)
-
-    Record Payment (POST):
-
-        URL: http://localhost:3002/payments
-
-        Method: POST
-
-        Headers: Content-Type: application/json, Authorization: Bearer YOUR_TOKEN
-
-        Body (JSON): (You can either link it to a billId or just organizationId if it's a one-off payment)
-        JSON
-
+    }
+    ```
+- Get All Bills (GET):
+  - URL: http://localhost:3002/bills
+  - Method: GET
+  - Headers: Authorization: Bearer YOUR_TOKEN
+  - Ex:
+    ```sh
+    $ curl -s http://localhost:3002/bills -H "Authorization: Bearer $TOKEN" | jq
+    [
+        {
+            "id": 1,
+            "billName": "Electricity Bill",
+            "dueDay": 20,
+            "typicalAmount": "150.75",
+            "frequency": "monthly",
+            "notes": "Covers lights and heating",
+            "isActive": 1,
+            "organizationId": 1,
+            "organizationName": "Dominion Energy"
+        }
+    ]
+    ```
+- Get Single Bill (GET):
+  - URL: http://localhost:3002/bills/1 (replace 1 with an actual bill ID)
+  - Method: GET
+  - Headers: Authorization: Bearer YOUR_TOKEN
+  - Ex,
+    ```sh
+    $ curl -s http://localhost:3002/bills/1 -H "Authorization: Bearer $TOKEN" | jq
+    {
+        "id": 1,
+        "billName": "Electricity Bill",
+        "dueDay": 20,
+        "typicalAmount": "150.75",
+        "frequency": "monthly",
+        "notes": "Covers lights and heating",
+        "isActive": 1,
+        "organizationId": 1,
+        "organizationName": "Dominion Energy"
+    }
+    ```
+- Update Bill (PUT):
+  - URL: http://localhost:3002/bills/1
+  - Method: PUT
+  - Headers: Content-Type: application/json, Authorization: Bearer YOUR_TOKEN
+  - Body (JSON - example update):
+    ```json
+    {
+        "organizationId": 1,
+        "billName": "Electricity Bill",
+        "dueDay": 25,
+        "typicalAmount": 160.00,
+        "frequency": "monthly",
+        "notes": "Covers lights and heating (updated)",
+        "isActive": true
+    }
+    ```
+  - Ex,
+    ```sh
+    $ DATA='{ "organizationId": 1, "billName": "Electricity Bill", "dueDay": 20, "typicalAmount": "150.75", "frequency": "monthly", "notes": "Covers lights and heating", "isActive": 1 }'
+    $ curl http://localhost:3002/bills/1 -X PUT -d "$DATA" -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
+    {"message":"Bill entry updated successfully."
+    ```
+- Delete Bill (DELETE):
+  - URL: http://localhost:3002/bills/1
+  - Method: DELETE
+  - Headers: Authorization: Bearer YOUR_TOKEN
+  - Ex
+    ```sh
+    $ curl http://localhost:3002/bills/1 -H "Authorization: Bearer $TOKEN"  -X DELETE
+    {"message":"Bill entry deleted successfully."}
+    ```
+- Payments (Individual Records)
+  - Record Payment (POST):
+  - URL: http://localhost:3002/payments
+  - Method: POST
+  - Headers: Content-Type: application/json, Authorization: Bearer YOUR_TOKEN
+  - Body (JSON): (You can either link it to a billId or just organizationId if it's a one-off payment)
+    ```jason
     {
         "billId": 1,             // Optional, if linked to a recurring bill entry
         "organizationId": 1,     // Required
@@ -164,7 +190,12 @@ Payments (Individual Records)
         "amountPaid": 150.75,
         "notes": "Paid online via bank transfer"
     }
+    ```
+  - Ex
+    ```sh
+    DATA='{ "billId": 1, "organizationId": 1, "dueDate": "2025-07-20", "amountDue": 150.75, "datePaid": "2025-07-18", "paymentConfirmationCode": "CONF123456", "amountPaid": 150.75, "notes": "Paid online via bank transfer" }'
 
+    ```
 Get Upcoming Payments (GET):
 
     URL: http://localhost:3002/payments/upcoming
