@@ -27,3 +27,5 @@ Test above with Google Gemini.
 
 
 TODO: patch [docker-compose](my-bill-tracker/docker-compose.yaml) to include and run the db-init.sql to setup the myqsl db.
+
+For more implementation details see the README.md in each directory starting with the [frontend microservice](my-bill-tracker-frontend/README.md).
