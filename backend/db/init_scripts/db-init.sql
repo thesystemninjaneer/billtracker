@@ -1,4 +1,5 @@
 -- Use the database specified in docker-compose.yml
+CREATE DATABASE IF NOT EXISTS bill_tracker_db;
 USE bill_tracker_db;
 
 -- Create the organizations table
@@ -17,7 +18,7 @@ CREATE TABLE organizations (
 
 -- For development, you can insert some dummy data
 INSERT INTO organizations (user_id, name, account_number, typical_due_day, website, contact_info) VALUES
-(1, 'Dominion Energy', '1234567890', 20, 'https://dominionenergy.com', '1-800-POWER'),
+(1, 'Dominion Energy', 'stuff1234567890', 20, 'https://dominionenergy.com', '1-800-POWER'),
 (1, 'Fairfax Water', 'FVW987654', 15, 'https://fairfaxwater.org', '703-698-5800'),
 (1, 'Verizon Fios', 'VZFIOS112233', 1, 'https://verizon.com/fios', '1-800-VERIZON');
 

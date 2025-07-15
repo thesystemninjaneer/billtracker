@@ -15,6 +15,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
+      #- ./backend/db/init_scripts:/docker-entrypoint-initdb.d
       - db_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
@@ -84,18 +85,18 @@ services:
         condition: service_started
     restart: always
 
-  # bill-tracker-frontend:
-  #   build:
-  #     context: ../my-bill-tracker-frontend
-  #     dockerfile: Dockerfile
-  #   container_name: bill-tracker-frontend
-  #   ports:
-  #     - "5137:5137"
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     organization-service:
-  #       condition: service_started
+  bill-tracker-frontend:
+    build:
+      context: ../my-bill-tracker-frontend
+      dockerfile: Dockerfile
+    container_name: bill-tracker-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      db:
+        condition: service_healthy
+      organization-service:
+        condition: service_started
 
 volumes:
   db_data:

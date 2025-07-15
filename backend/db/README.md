@@ -13,6 +13,8 @@ To manually connect to the database using a mysql client and setup the schema/ta
 $ docker exec -ti bill-tracker-mysql bash
 bash-5.1# mysql -u bill_user -p
 Enter password:
+use bill_tracker_db;
+SHOW TABLES;
 ```
 When prompted, paste in the database password (default: `your_db_password`). After logged in, paste in the contents of [db-init.sql](db-init.sql) to perform the one time initialization of the databases app required tables. 
 
