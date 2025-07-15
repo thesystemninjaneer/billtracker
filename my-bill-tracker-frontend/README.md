@@ -426,4 +426,4 @@ Here is the order to follow when building and testing individual service during 
 2. [backend user-service](../backend/user-service/README.md)
 3. [backend organization-service](../backend/organization-service/README.md)
 4. [backend bill-payment-service](../backend/bill-payment-service/README.md)
-5. [frontend](../my-bill-tracker-frontend/README.md)
+5. [frontend](../my-bill-tracker-frontend/README.md) (this page)
