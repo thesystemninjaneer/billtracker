@@ -2,7 +2,7 @@
 
 This uses a Node.js Express application for the User Service. The following assumes the backend DB service has already been configured and tested per [its README.md](../db/README.md). The below must be done before the next dependent service in [../organization-service](../organization-service/README.md).
 
-1. project setup
+1. breakdown
 
 - express: Web framework.
 - mysql2: MySQL client for Node.js.
