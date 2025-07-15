@@ -1,6 +1,6 @@
 # User Service Microservice
 
-Node.js Express application for the User Service. The following assumes the backend DB service has already been configured and tested per [its README.md](../backend/db/README.md). The below must be done before the next dependent service in [./backend/organization-service](../backend/organization-service/README.md).
+This uses a Node.js Express application for the User Service. The following assumes the backend DB service has already been configured and tested per [its README.md](../db/README.md). The below must be done before the next dependent service in [../organization-service](../organization-service/README.md).
 
 1. project setup
 
