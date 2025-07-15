@@ -420,7 +420,7 @@ Continue reading for additional details on the refinement.
 
 ## Local Development / Contributing
 
-Here is the order to follow when building and testing individual service during local development.
+Here is the order to follow when building and testing individual services during local development.
 
 1. [backend db](../backend/db/README.md)
 2. [backend user-service](../backend/user-service/README.md)
