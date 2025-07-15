@@ -11,12 +11,12 @@ First, a MySQL database is needed for data persistence. These instructions use d
 To manually connect to the database using a mysql client and setup the schema/tables, do the following.
 ```
 $ docker exec -ti bill-tracker-mysql bash
-bash-5.1# mysql -u bill_user -p your_db_password
+bash-5.1# mysql -u bill_user -p
 Enter password:
 ```
-Paste in the contents of `./billtracker/backend/db/db-init.sql`.
+When prompted, paste in the database password (default: `your_db_password`). After logged in, paste in the contents of [db-init.sql](db-init.sql) to perform the one time initialization of the databases app required tables. 
 
-Continue on to manually run and test the service locally. This is handy when development/contributing work needs validated.
+Continue on to manually run and test the service locally. This is handy when your development/contributing work needs validated.
 
 ## Run the db service
 
