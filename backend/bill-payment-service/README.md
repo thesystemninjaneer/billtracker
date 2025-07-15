@@ -334,4 +334,4 @@ Bills (Recurring Entries)
     {"message":"Payment record deleted successfully."}
     ```
 
-This robust Bill Payment Service is integrated with the React frontend, the Dashboard and Record Payment Form, to bring the bill tracking functionality to life. To run and test the frontend integration, see the ./my-bill-tracker-frontend/README.md.
+This robust Bill Payment Service is integrated with the React frontend, the Dashboard and Record Payment Form, to bring the bill tracking functionality to life. To run and test the frontend integration, see the [frontend README](../my-bill-tracker-frontend/README.md). 
