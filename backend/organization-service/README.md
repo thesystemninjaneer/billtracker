@@ -155,7 +155,7 @@ The base URL for your Organization Service will be http://localhost:3001.
     }
     ```
 
-You now have a fully functional Organization Service containerized and connected to a persistent MySQL database!
+Te above results in a fully functional Organization Service containerized and connected to a persistent MySQL database!
 
 
 This will rebuild the organization-service image with the updated code and restart its container.
@@ -202,5 +202,5 @@ Test Flow:
 
         Try with a valid token from your second user. You should see the second user's organizations (or an empty array).
 
-
+To configure the next most relevant service, perform the steps in the [backend bill-payment-service README](../backend/bill-payment-service/README.md). 
 
