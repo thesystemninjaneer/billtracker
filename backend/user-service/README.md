@@ -112,4 +112,4 @@ Test without token: If you omit the Authorization header or provide an invalid t
 
 This functional User Service uses secure password hashing and JWT-based authentication!
 
-Perform Test 1 to generate a user account password before moving on to other services. You'll need it's password when testing any other API endpoints.
+Perform Test 1 to generate a user account password before moving on to other services. You'll need it's password when testing any other API endpoints. To setup the next most relevant service, follow the [../organization-service README](../organization-service/README.md).
