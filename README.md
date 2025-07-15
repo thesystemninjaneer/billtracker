@@ -4,9 +4,9 @@
 
 An app for tracking personal monthly bill payments such as power, water, and cable.
 
-- 12 factor microservices design
-- Containerized
-- React front end
+- Leverage [12 factor app](https://12factor.net) methodology
+- Containerized [microservices](https://martinfowler.com/microservices/)
+- [React](https://react.dev)front end
   - input web form for users to add, edit, delete, update of billing organization details
   - input web form for users to record monthly paid bill details
   - dashboard display of upcoming bills due
@@ -16,7 +16,7 @@ An app for tracking personal monthly bill payments such as power, water, and cab
 - Mysql back end
   - records bill organization details and their payment entries
   - records user details and profile configuration
-- API interservice communication
+- API inter-service communication
   - get, list, edit, and add bill organization details
   - get and list upcoming bills due
   - add and delete paid bill details to include date paid, payment confirmation code, and amount paid
