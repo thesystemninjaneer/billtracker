@@ -26,4 +26,4 @@ Test above with Google Gemini.
 ![dashboard](images/dashboard.PNG)
 
 
-TODO: patche docker-compose to include and run the db-init.sql to setup the myqsl db.
+TODO: patch [docker-compose](my-bill-tracker/docker-compose.yaml) to include and run the db-init.sql to setup the myqsl db.
