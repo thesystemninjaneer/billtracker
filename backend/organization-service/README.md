@@ -202,5 +202,5 @@ Test Flow:
 
         Try with a valid token from your second user. You should see the second user's organizations (or an empty array).
 
-To configure the next most relevant service, perform the steps in the [backend bill-payment-service README](../backend/bill-payment-service/README.md). 
+To configure the final backend service, perform the steps in the [bill-payment-service README](../bill-payment-service/README.md). 
 
