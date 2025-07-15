@@ -81,10 +81,10 @@ Bills (Recurring Entries)
     ```
   - Ex
     ```sh
-    USER='{ "username": "testuser", "email": "test@example.com", "password": "password123" }'
-    TOKEN=$(curl -s http://localhost:3000/login -X POST -d "$USER" -H 'Content-Type: application/json' | jq -r .token)
-    DATA='{ "organizationId": 1, "billName": "Electricity Bill", "dueDay": 20, "typicalAmount": 150.75, "frequency": "monthly", "notes": "Covers lights and heating" }'
-    curl http://localhost:3002/bills -X POST -d "$DATA" -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"  | jq
+    $ USER='{ "username": "testuser", "email": "test@example.com", "password": "password123" }'
+    $ TOKEN=$(curl -s http://localhost:3000/login -X POST -d "$USER" -H 'Content-Type: application/json' | jq -r .token)
+    $ DATA='{ "organizationId": 1, "billName": "Electricity Bill", "dueDay": 20, "typicalAmount": 150.75, "frequency": "monthly", "notes": "Covers lights and heating" }'
+    $ curl http://localhost:3002/bills -X POST -d "$DATA" -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"  | jq
     % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                     Dload  Upload   Total   Spent    Left  Speed
     100   368  100   212  100   156   3424   2520 --:--:-- --:--:-- --:--:--  5935
@@ -179,7 +179,7 @@ Bills (Recurring Entries)
   - Method: POST
   - Headers: Content-Type: application/json, Authorization: Bearer YOUR_TOKEN
   - Body (JSON): (You can either link it to a billId or just organizationId if it's a one-off payment)
-    ```jason
+    ```json
     {
         "billId": 1,             // Optional, if linked to a recurring bill entry
         "organizationId": 1,     // Required
@@ -193,46 +193,121 @@ Bills (Recurring Entries)
     ```
   - Ex
     ```sh
-    DATA='{ "billId": 1, "organizationId": 1, "dueDate": "2025-07-20", "amountDue": 150.75, "datePaid": "2025-07-18", "paymentConfirmationCode": "CONF123456", "amountPaid": 150.75, "notes": "Paid online via bank transfer" }'
-
+    $ DATA='{ "billId": 2, "organizationId": 1, "dueDate": "2025-07-20", "amountDue": 150.75, "datePaid": "2025-07-18", "paymentConfirmationCode": "CONF123456", "amountPaid": 150.75, "notes": "Paid online via bank transfer" }'
+    $ curl http://localhost:3002/payments -X POST -d "$DATA" -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"  | jq
+    % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                    Dload  Upload   Total   Spent    Left  Speed
+    100   508  100   295  100   213   9529   6880 --:--:-- --:--:-- --:--:-- 16933
+    {
+        "message": "Payment recorded successfully",
+        "paymentId": 1,
+        "payment": {
+            "id": 1,
+            "billId": 2,
+            "organizationId": 1,
+            "dueDate": "2025-07-20",
+            "amountDue": 150.75,
+            "payment_status": "paid",
+            "datePaid": "2025-07-18",
+            "amountPaid": 150.75,
+            "paymentConfirmationCode": "CONF123456",
+            "notes": "Paid online via bank transfer"
+        }
+    }
     ```
-Get Upcoming Payments (GET):
-
-    URL: http://localhost:3002/payments/upcoming
-
-    Method: GET
-
-    Headers: Authorization: Bearer YOUR_TOKEN
-
-Get Recently Paid Payments (GET):
-
-    URL: http://localhost:3002/payments/recently-paid
-
-    Method: GET
-
-    Headers: Authorization: Bearer YOUR_TOKEN
-
-Get Single Payment (GET):
-
-    URL: http://localhost:3002/payments/1 (replace 1 with an actual payment ID)
-
-    Method: GET
-
-    Headers: Authorization: Bearer YOUR_TOKEN
-
-Update Payment (PUT):
-
-    URL: http://localhost:3002/payments/1
-
-    Method: PUT
-
-    Headers: Content-Type: application/json, Authorization: Bearer YOUR_TOKEN
-
-    Body (JSON - example update):
-    JSON
-
+- Get Upcoming Payments (GET):
+  - Get upcoming bills (payments with status 'pending' or 'overdue') for a user
+  - URL: http://localhost:3002/payments/upcoming
+  - Method: GET
+  - Headers: Authorization: Bearer YOUR_TOKEN
+  - Ex
+    ```sh
+    #first create a pending payment entry
+    $ DATA='{ "billId": 2, "organizationId": 1, "dueDate": "2025-07-15", "amountDue": "150.75", "paymentConfirmationCode": "pending", "notes": "Pending bill" }'
+    $ curl http://localhost:3002/payments -X POST -d "$DATA" -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"  
+    {"message":"Payment recorded successfully","paymentId":3,"payment":{"id":3,"billId":2,"organizationId":1,"dueDate":"2025-07-15","amountDue":"150.75","payment_status":"pending","paymentConfirmationCode":"pending","notes":"Pending bill"}}fitzhenk@fedora:~/code/gh/thesystemninjaneer/billtracker$ 
+    # now check upcoming
+    $ curl http://localhost:3002/payments/upcoming -X GET -H  "Authorization: Bearer $TOKEN" | jq
+    % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                    Dload  Upload   Total   Spent    Left  Speed
+    100   277  100   277    0     0  25817      0 --:--:-- --:--:-- --:--:-- 27700
+    [
         {
-            "billId": 1,
+            "id": 3,
+            "billId": 2,
+            "organizationId": 1,
+            "dueDate": "2025-07-15T00:00:00.000Z",
+            "amountDue": "150.75",
+            "paymentStatus": "pending",
+            "datePaid": null,
+            "amountPaid": null,
+            "confirmationCode": "pending",
+            "notes": "Pending bill",
+            "organizationName": "Dominion Energy",
+            "billName": "Electricity Bill"
+        }
+    ]
+    ```
+- Get Recently Paid Payments (GET):
+  - URL: http://localhost:3002/payments/recently-paid
+  - Method: GET
+  - Headers: Authorization: Bearer YOUR_TOKEN
+  - Ex
+    ```sh
+    $ curl http://localhost:3002/payments/recently-paid -X GET -H "Authorization: Bearer $TOKEN"  | jq
+    % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                    Dload  Upload   Total   Spent    Left  Speed
+    100   320  100   320    0     0  23848      0 --:--:-- --:--:-- --:--:-- 24615
+    [
+        {
+            "id": 1,
+            "billId": 2,
+            "organizationId": 1,
+            "dueDate": "2025-07-20T00:00:00.000Z",
+            "amountDue": "150.75",
+            "paymentStatus": "paid",
+            "datePaid": "2025-07-18T00:00:00.000Z",
+            "amountPaid": "150.75",
+            "confirmationCode": "CONF123456",
+            "notes": "Paid online via bank transfer",
+            "organizationName": "Dominion Energy",
+            "billName": "Electricity Bill"
+        }
+    ]
+    ```
+- Get Single Payment (GET):
+  - URL: http://localhost:3002/payments/1 (replace 1 with an actual payment ID)
+  - Method: GET
+  - Headers: Authorization: Bearer YOUR_TOKEN
+  - Ex
+    ```sh
+     curl http://localhost:3002/payments/1 -X GET -H "Authorization: Bearer $TOKEN"  | jq
+    % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                  Dload  Upload   Total   Spent    Left  Speed
+    100   318  100   318    0     0  19855      0 --:--:-- --:--:-- --:--:-- 21200
+    {
+        "id": 1,
+        "billId": 2,
+        "organizationId": 1,
+        "dueDate": "2025-07-20T00:00:00.000Z",
+        "amountDue": "150.75",
+        "paymentStatus": "paid",
+        "datePaid": "2025-07-18T00:00:00.000Z",
+        "amountPaid": "150.75",
+        "confirmationCode": "CONF123456",
+        "notes": "Paid online via bank transfer",
+        "organizationName": "Dominion Energy",
+        "billName": "Electricity Bill"
+    }
+    ```
+- Update Payment (PUT):
+  - URL: http://localhost:3002/payments/1
+  - Method: PUT
+  - Headers: Content-Type: application/json, Authorization: Bearer YOUR_TOKEN
+  - Body (JSON - example update):
+    ```json
+        {
+            "billId": 2,
             "organizationId": 1,
             "dueDate": "2025-07-20",
             "amountDue": 150.75,
@@ -242,15 +317,21 @@ Update Payment (PUT):
             "notes": "Paid online via bank transfer (updated)",
             "paymentStatus": "paid"
         }
+    ```
+  - Ex
+    ```sh
+    $ DATA='{ "billId": 2, "organizationId": 1, "dueDate": "2025-07-20", "amountDue": 150.75, "datePaid": "2025-07-18", "paymentConfirmationCode": "CONF123456-UPDATED", "amountPaid": 150.75, "notes": "Paid online via bank transfer (updated)", "paymentStatus": "paid" }'
+    $ curl http://localhost:3002/payments/1 -X PUT -d "$DATA" -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"  
+    {"message":"Payment record updated successfully."}
+    ```
+- Delete Payment (DELETE):
+  - URL: http://localhost:3002/payments/1
+  - Method: DELETE
+  - Headers: Authorization: Bearer YOUR_TOKEN
+  - Ex
+    ```sh
+    $ curl http://localhost:3002/payments/1 -X DELETE -H "Authorization: Bearer $TOKEN"  
+    {"message":"Payment record deleted successfully."}
+    ```
 
-    Delete Payment (DELETE):
-
-        URL: http://localhost:3002/payments/1
-
-        Method: DELETE
-
-        Headers: Authorization: Bearer YOUR_TOKEN
-
-You now have a robust Bill Payment Service. The next logical step is to integrate this service with your React frontend, especially the Dashboard and Record Payment Form, to bring the bill tracking functionality to life.
-
-Are you ready to integrate the Bill Payment Service with the frontend?
+This robust Bill Payment Service is integrated with the React frontend, the Dashboard and Record Payment Form, to bring the bill tracking functionality to life. To run and test the frontend integration, see the ./my-bill-tracker-frontend/README.md.

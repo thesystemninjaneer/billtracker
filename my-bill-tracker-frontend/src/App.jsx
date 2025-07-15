@@ -61,7 +61,7 @@ function AppContent() {
             }
           />
           <Route
-            path="/add-bill" {/* New route for AddBillForm */}
+            path="/add-bill"
             element={
               <ProtectedRoute>
                 <AddBillForm />
