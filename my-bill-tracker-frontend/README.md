@@ -164,7 +164,7 @@ Each microservice will expose a RESTful API.
 
 ## Component Structure Overview
 
-We'll organize our frontend into several key components:
+Organization of the frontend into several key components:
 
     src/App.jsx: The main application component, handling routing.
 
@@ -179,9 +179,9 @@ We'll organize our frontend into several key components:
     src/pages/NotFound.jsx: For handling invalid routes.
 
 
-## Integration of frontend with organizatgion service
+## Integration of frontend with organization service
 
-React frontend to make API calls to your newly created Organization Service. This involves:
+React frontend makes API calls to the Organization Service. This involves:
 
 1. Updating BillOrganizationForm.jsx: To send POST requests for adding and PUT requests for updating. It will also make a GET request if editing an existing organization.
 
@@ -197,19 +197,19 @@ The `./src/config.js` configuration file manages the API endpoint.
 
 2. BillOrganizationForm.jsx integration
 
-This will interact with your Organization Service to add, update, and delete organizations.
+This interacts with the Organization Service to add, update, and delete organizations.
 
 The `./src/pages/Forms.css` provieds a simple error message style.
 
 3. List orgs
 
-The `src/pages/Dashboard.jsx` will fetch and display the organizations registered with the backend. It will simply list them. Later, we'll use a separate Bill Payment Service to track specific bills.
+The `src/pages/Dashboard.jsx` fetches and display the organizations registered with the backend. It will simply list them. A separate Bill Payment Service tracks specific bills.
 
 The `src/pages/Dashboard.css` file adds styles for new links and sections.
 
-4. organization id
+4. Organization ID
 
-The `RecordPaymentForm.jsx` form primarily uses the organizationId passed from the dashboard to pre-select the organization, rather than relying solely on the name. It fetches the list of organizations from your backend to populate its dropdown.
+The `RecordPaymentForm.jsx` form primarily uses the organizationId passed from the dashboard to pre-select the organization, rather than relying solely on the name. It fetches the list of organizations from the backend to populate its dropdown.
 
 The`preselected-info` block in src/pages/Forms.css is a simple style for preselected info.
 
@@ -247,8 +247,7 @@ observe the following:
 
 ## Integration of User Service with Frontend
 
-
-integration the User Service, we'll need to:
+Integrated User Service:
 
 1. Authentication-related Pages/Components: forms for user registration and login.
 2. App.jsx: routing for the new authentication pages.
@@ -264,7 +263,7 @@ User Service API base URL in my-bill-tracker-frontend/src/config.js.
 
 2. auth client
 
-manage user authentication state globally across the app using React Context in `my-bill-tracker-frontend/src/context/AuthContext.jsx`.
+User authentication state global management across the app uses the React Context in `my-bill-tracker-frontend/src/context/AuthContext.jsx`.
 
 3. auth pages
 
@@ -277,13 +276,13 @@ The header shows login/logout options based on authentication status with a styl
 
 5. auth wrapped application
 
-the application is wrapped with AuthProvider and implements protected routes using a new ProtectedRoute component in `my-bill-tracker-frontend/src/App.jsx`. simple loading style in `src/App.css`.
+The application is wrapped with AuthProvider and implements protected routes using a ProtectedRoute component in `my-bill-tracker-frontend/src/App.jsx`. A simple loading style is located in `src/App.css`.
 
 6. authentication api calls
 
-API Calls to use authAxios (Critical!)
-
-all API calls to protected backend services (like the Organization Service) must include the JWT token. `my-bill-tracker-frontend/src/pages/BillOrganizationForm.jsx` uses the authAxios function from AuthContext.
+- API Calls to use authAxios (Critical!).
+- All API calls to protected backend services (like the Organization Service) must include the JWT token.
+- `my-bill-tracker-frontend/src/pages/BillOrganizationForm.jsx` uses the authAxios function from AuthContext.
 
 ## Running frontend with user service
 
@@ -324,41 +323,39 @@ npm run dev
 
     Add/Edit/Delete Organizations: Now that you are logged in, try adding, editing, and deleting organizations. These actions should now correctly send the Authorization header to your Organization Service.
 
-You now have a fully authenticated frontend capable of registering and logging in users, and all interactions with the Organization Service are protected by JWT tokens.
+The above produces a fully authenticated frontend capable of registering and logging in users, and all interactions with the Organization Service are protected by JWT tokens.
 
-The next crucial step is to update the Organization Service to use the actual user_id extracted from the JWT token instead of the hardcoded user_id = 1. 
+A crucial next step was to update the Organization Service to use the actual user_id extracted from the JWT token instead of the hardcoded user_id = 1. 
 
-1.  Update Frontend Configuration
+1.  Updated Frontend Configuration
 
-Add the Bill Payment Service API base URL to my-bill-tracker-frontend/src/config.js.
+Added the Bill Payment Service API base URL to `my-bill-tracker-frontend/src/config.js`.
 
-my-bill-tracker-frontend/src/config.js
+2.  Created my-bill-tracker-frontend/src/pages/AddBillForm.jsx
 
-2.  Create my-bill-tracker-frontend/src/pages/AddBillForm.jsx
+This form allows users to define recurring bill entries (e.g., "Electricity Bill" for "Dominion Energy" due on the 20th of each month).
 
-This new form will allow users to define recurring bill entries (e.g., "Electricity Bill" for "Dominion Energy" due on the 20th of each month).
-
-Add info-message style to src/pages/Forms.css
+An info-message style was added to the `src/pages/Forms.css`. 
 
 3. Update my-bill-tracker-frontend/src/pages/RecordPaymentForm.jsx
 
-This form will now save payments to the Bill Payment Service. It will allow linking a payment to an existing recurring bill entry if selected.
+This form saves payments to the Bill Payment Service. It will allow linking a payment to an existing recurring bill entry if selected.
 
 4. Update my-bill-tracker-frontend/src/pages/Dashboard.jsx
 
-The Dashboard will now fetch and display real upcoming and recently paid bills from your Bill Payment Service.
+The Dashboard fetches and display real upcoming and recently paid bills from your Bill Payment Service.
 
-Add new styles for dashboard sections to src/pages/Dashboard.css:
+Add new styles for dashboard sections to src/pages/Dashboard.css. 
 
-5. Update my-bill-tracker-frontend/src/App.jsx
+5. Updated my-bill-tracker-frontend/src/App.jsx
 
-Add the route for the new AddBillForm
+Added the route for the new AddBillForm
 
-Add new styles for dashboard sections to src/pages/Dashboard.css:
+Added styles for dashboard sections to src/pages/Dashboard.css. 
 
-6.  Update my-bill-tracker-frontend/src/components/Header.jsx
+6.  Updated my-bill-tracker-frontend/src/components/Header.jsx
 
-Add a link to the new "Add Bill" form.
+Added a link to the new "Add Bill" form.
 
 ## Running the Integrated Frontend
 
@@ -370,7 +367,7 @@ docker compose up --build -d
 
 Confirm bill-tracker-mysql, bill-tracker-organization-service, and bill-tracker-bill-payment-service are all running and healthy.
 
-Start your React frontend:
+Start the React frontend:
 Open a new terminal, navigate into your frontend directory:
 Bash
 
@@ -413,10 +410,13 @@ Test Flow:
 
         Try adding another bill and recording a payment for a future due date, and you should see it appear in "Upcoming Bills Due".
 
-You now have a fully integrated frontend interacting with your Bill Payment Service, allowing users to track their recurring bills and individual payments. This significantly enhances the functionality of your application!
+The above provides a fully integrated frontend interacting with the Bill Payment Service, allowing users to track their recurring bills and individual payments. This significantly enhances the functionality of the application!
 
-What's next? We could refine the existing services, add more features (like bill reminders, or editing recurring bills/payments from the frontend), or consider deploying your application.
+The existing services were additionally refined tp provide the following.
+- More features (like bill reminders & editing recurring bills/payments from the frontend). 
+- Deploying the application.
 
+Continue reading for additional details on the refinement. 
 
 ## Local Development / Contributing
 
