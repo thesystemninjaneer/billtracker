@@ -423,7 +423,7 @@ Continue reading for additional details on the refinement.
 Here is the order to follow when building and testing individual service during local development.
 
 1. [backend db](../backend/db/README.md)
-2. [backend user-service](../backend/user-ervice/README.md)
+2. [backend user-service](../backend/user-service/README.md)
 3. [backend organization-service](../backend/organization-service/README.md)
 4. [backend bill-payment-service](../backend/bill-payment-service/README.md)
 5. [frontend](../my-bill-tracker-frontend/README.md)
