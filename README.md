@@ -1,8 +1,8 @@
 # BillTracker
 
-## Design Goals
-
 An app for tracking personal monthly bill payments such as power, water, and cable.
+
+## Design Goals
 
 - Leverage [12 factor app](https://12factor.net) methodology
 - Containerized [microservices](https://martinfowler.com/microservices/)
@@ -11,17 +11,15 @@ An app for tracking personal monthly bill payments such as power, water, and cab
   - input web form for users to record monthly paid bill details
   - dashboard display of upcoming bills due
   - dashboard display of recently paid bills
-- automated alerts
+- Automated alerts
   - email notification including summary of upcoming bills due with link back to record paid details
-- Mysql back end
+- Database back end
   - records bill organization details and their payment entries
   - records user details and profile configuration
 - API inter-service communication
   - get, list, edit, and add bill organization details
   - get and list upcoming bills due
   - add and delete paid bill details to include date paid, payment confirmation code, and amount paid
-
-Test above with Google Gemini.
 
 ![dashboard](images/dashboard.PNG)
 
