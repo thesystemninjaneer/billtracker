@@ -1,5 +1,5 @@
 -- Use the database specified in docker-compose.yml
-CREATE DATABASE IF NOT EXISTS bill_tracker_db;
+-- CREATE DATABASE IF NOT EXISTS bill_tracker_db;
 USE bill_tracker_db;
 
 -- Create the organizations table
