@@ -18,6 +18,7 @@ function Header() {
               <Link to="/add-organization">Add Org</Link>
               <Link to="/add-bill">Add Bill</Link> {/* New link */}
               <Link to="/record-payment">Record Payment</Link>
+              <Link to="/settings">Settings</Link>
               <span className="user-info">Hello, {user?.username}!</span>
               <button onClick={logout} className="logout-btn">Logout</button>
             </>
