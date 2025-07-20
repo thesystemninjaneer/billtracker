@@ -29,3 +29,16 @@ This module will handle sending different types of notifications. SQL queries ar
 ### scheduler.js
 
 Uses MySQL queries to parse notification_time_offsets from a comma-separated string.
+
+### settings.ejs
+
+ Replace 'YOUR_AUTH_TOKEN_HERE' with actual token retrieval logic This token must be sent with every authenticated API request. Example: from a cookie, localStorage, or a global variable set by your server.
+
+### server.js
+
+- GET /dashboard
+- GET /settings/notifications
+- GET /api/users/me/notifications
+- PUT /api/users/me/notifications
+- GET /api/notifications/stream
+  - This is the endpoint frontend will connect to for real-time updates

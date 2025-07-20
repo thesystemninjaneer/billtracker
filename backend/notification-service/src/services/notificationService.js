@@ -1,5 +1,6 @@
+// backend/notification-service/src/services/notificationService.js
 const nodemailer = require('nodemailer');
-const db = require('db'); // Your MySQL database connection
+const db = require('../db'); // Your MySQL database connection
 const clients = new Set(); // To store connected SSE clients for in-app alerts
 
 // --- Email Transporter (Configure with your SMTP details) ---

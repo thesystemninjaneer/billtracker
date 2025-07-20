@@ -7,19 +7,24 @@ require('dotenv').config();
 
 const express = require('express');
 const path = require('path');
-const db = require('.db'); // Your MySQL DB connection
+const db = require('./db'); // Your MySQL DB connection
+const { startNotificationScheduler } = require('./scheduler');
+const { setupSSE } = require('./services/notificationService');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const { startNotificationScheduler } = require('./scheduler');
-const { setupSSE } = require('./notificationService');
+
 
 const app = express();
-const port = process.env.SERVICE_PORT || 3003;
 const jwtSecret = process.env.JWT_SECRET;
 
 // --- Middleware ---
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Set up your view engine (assuming EJS)
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views')); // EJS templates are in src/views
+// Serve static files (CSS, client-side JS)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Test DB connection
 pool.getConnection()
@@ -59,7 +64,7 @@ app.use('/api/users/me/notifications', authenticateToken);
 // --- Routes ---
 
 // Home/Dashboard route 
-app.get('/dashboard', async (req, res) => {
+app.get('/dashboard', authenticateToken, async (req, res) => {
     if (!req.user) {
         return res.redirect('/login'); // Redirect to login if not authenticated
     }
@@ -168,16 +173,14 @@ app.put('/api/users/me/notifications', authenticateToken, async (req, res) => {
     }
 });
 
-
 // --- Server-Sent Events Endpoint ---
 // This is the endpoint frontend will connect to for real-time updates
 app.get('/api/notifications/stream', (req, res) => {
     setupSSE(req, res); // This function is from notificationService
 });
 
-
 // Start the notification server
-const PORT = process.env.PORT || 3003;
+const port = process.env.SERVICE_PORT || 3003;
 app.listen(port, () => {
   console.log(`Notification Service running on port ${port}`);
   startNotificationScheduler(); // Start the daily cron job
