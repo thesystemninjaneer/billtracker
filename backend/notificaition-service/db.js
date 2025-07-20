@@ -1,3 +1,5 @@
+// --- backend/notififcation-service/db.js --
+// This file handles the database connection for the notification service using MySQL.
 const mysql = require('mysql2/promise'); // Use promise-based API for async/await
 
 const pool = mysql.createPool({

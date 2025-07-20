@@ -6,7 +6,6 @@ import BillOrganizationForm from './pages/BillOrganizationForm.jsx';
 import RecordPaymentForm from './pages/RecordPaymentForm.jsx';
 import AddBillForm from './pages/AddBillForm.jsx'; // New import
 import Register from './pages/Register.jsx';
-import Settings from './pages/Settings.ejs';
 import Login from './pages/Login.jsx';
 import NotFound from './pages/NotFound.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
@@ -77,7 +76,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          {/* Note: /record-payment/:organizationId is handled by the query params on /record-payment now */}
+          {/* 
           <Route
             path="/settings"
             element={
@@ -85,7 +84,7 @@ function AppContent() {
                 <Settings />
               </ProtectedRoute>
             }
-          />
+          /> */ }
           {/* Catch-all for undefined routes */}
           <Route path="*" element={<NotFound />} />
         </Routes>

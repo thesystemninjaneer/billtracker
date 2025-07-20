@@ -1,3 +1,8 @@
+// --- main app file for notification service ---
+// This file sets up the Express server, connects to the MySQL database,
+// and defines the API endpoints for notification settings and real-time updates.
+// It also initializes the notification scheduler to send daily reminders.
+// The server listens on the port specified in the environment variable SERVICE_PORT or defaults to 3003
 require('dotenv').config();
 
 const express = require('express');
@@ -48,6 +53,28 @@ const authenticateToken = (req, res, next) => {
 // Apply authentication middleware to all notification routes
 app.use('/settings/notifications', authenticateToken);
 app.use('/api/users/me/notifications', authenticateToken);
+
+
+
+// --- Routes ---
+
+// Home/Dashboard route 
+app.get('/dashboard', async (req, res) => {
+    if (!req.user) {
+        return res.redirect('/login'); // Redirect to login if not authenticated
+    }
+    try {
+        const userResult = await db.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+        const user = userResult.rows[0];
+        const billsResult = await db.query('SELECT * FROM bills WHERE user_id = ? ORDER BY due_date ASC', [req.user.id]);
+        const bills = billsResult.rows;
+
+        res.render('dashboard', { user, bills, frontendUrl: process.env.FRONTEND_URL });
+    } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        res.status(500).send('Error loading dashboard');
+    }
+});
 
 // --- API Endpoints Route for Notification Settings Page ---
 /**
@@ -150,6 +177,10 @@ app.get('/api/notifications/stream', (req, res) => {
 
 
 // Start the notification server
+const PORT = process.env.PORT || 3003;
 app.listen(port, () => {
   console.log(`Notification Service running on port ${port}`);
+  startNotificationScheduler(); // Start the daily cron job
 });
+
+module.exports = app; // Export app for testing if needed

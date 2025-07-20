@@ -1,3 +1,4 @@
+// This file handles the scheduling of daily notifications for users regarding their bills.
 const cron = require('node-cron');
 const db = require('db'); // Your MySQL database connection
 const { sendEmailNotification, sendSlackMessage, sendInAppAlert, logNotification, hasNotificationBeenSent } = require('./services/notificationService');
