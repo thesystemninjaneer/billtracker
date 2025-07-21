@@ -7,9 +7,8 @@ require('dotenv').config();
 
 const express = require('express');
 const path = require('path');
-const db = require('./db'); // Your MySQL DB connection
-const { startNotificationScheduler } = require('./scheduler');
-const { setupSSE } = require('./services/notificationService');
+const { startNotificationScheduler } = require('./src/scheduler');
+const { setupSSE } = require('./src/services/notificationService');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 
@@ -22,11 +21,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // Set up your view engine (assuming EJS)
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views')); // EJS templates are in src/views
+app.set('views', path.join(__dirname, 'src/views')); // EJS templates are in src/views
 // Serve static files (CSS, client-side JS)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Test DB connection
+const db = require('./src/db'); // Your MySQL DB connection
 pool.getConnection()
   .then(connection => {
     console.log('Notification Service: Connected to MySQL database!');
