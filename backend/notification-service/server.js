@@ -27,7 +27,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Test DB connection
 const db = require('./src/db'); // Your MySQL DB connection
-pool.getConnection()
+db.getConnection()
   .then(connection => {
     console.log('Notification Service: Connected to MySQL database!');
     connection.release();
