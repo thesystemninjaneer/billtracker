@@ -8,6 +8,7 @@ import AddBillForm from './pages/AddBillForm.jsx'; // New import
 import Register from './pages/Register.jsx';
 import Login from './pages/Login.jsx';
 import NotFound from './pages/NotFound.jsx';
+import NotificationSettings from './pages/NotificationSettings';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import './App.css';
 
@@ -76,15 +77,14 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          {/* 
           <Route
-            path="/settings"
+            path="/settings/notifications"
             element={
               <ProtectedRoute>
-                <Settings />
+                <NotificationSettings />
               </ProtectedRoute>
             }
-          /> */ }
+          />
           {/* Catch-all for undefined routes */}
           <Route path="*" element={<NotFound />} />
         </Routes>

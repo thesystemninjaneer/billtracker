@@ -18,12 +18,23 @@ const jwtSecret = process.env.JWT_SECRET;
 
 // --- Middleware ---
 app.use(express.json());
+app.use(cors(corsOptions)); // Enable CORS for all routes
 app.use(express.urlencoded({ extended: true }));
 // Set up your view engine (assuming EJS)
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'src/views')); // EJS templates are in src/views
 // Serve static files (CSS, client-side JS)
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Enable CORS for frontend app
+const corsOptions = {
+  origin: 'http://localhost:8080', // Specify the allowed origin(s)
+  methods: ['GET', 'POST', 'HEAD', 'PUT', 'PATCH', 'DELETE'], // Specify allowed HTTP methods
+  allowedHeaders: ['Authorization: Bearer'], // Specify allowed request headers
+  credentials: true, // Allow cookies and authentication credentials
+};
+
+
 
 // Test DB connection
 const db = require('./src/db'); // Your MySQL DB connection
