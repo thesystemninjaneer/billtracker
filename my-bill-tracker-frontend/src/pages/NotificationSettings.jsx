@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { AuthContext } from '../context/AuthContext'; // Assuming AuthContext is here
-import Header from '../components/Header'; // Assuming your Header component is here
+import { AuthContext } from '../context/AuthContext';
+// Header import removed as it's provided by App.jsx's layout
+// import Header from '../components/Header'; // Removed this line
 
 // Define the base URL for your notification service backend
 // Make sure this matches the port your notification service is actually running on (e.g., 3003)
 const NOTIFICATION_SERVICE_BASE_URL = 'http://localhost:3003';
 
 const NotificationSettings = () => {
-  // Destructure 'token' as 'authToken', and also get 'isAuthenticated', 'loading' (as 'authLoading'), and 'authAxios'
   const { token: authToken, isAuthenticated, loading: authLoading, authAxios } = useContext(AuthContext);
   const [settings, setSettings] = useState({
     is_email_notification_enabled: false,
@@ -16,11 +16,10 @@ const NotificationSettings = () => {
     in_app_alerts_enabled: false,
     notification_time_offsets: [], // Array of numbers (e.g., [1, 7, 30])
   });
-  const [loading, setLoading] = useState(true); // This component's loading state
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [message, setMessage] = useState(''); // For success/error messages to the user
+  const [message, setMessage] = useState('');
 
-  // State for the input field for adding new offsets
   const [newOffsetInput, setNewOffsetInput] = useState('');
 
   useEffect(() => {
@@ -32,39 +31,32 @@ const NotificationSettings = () => {
     // --- End Debugging Logs ---
 
     const fetchSettings = async () => {
-      // IMPORTANT: Only proceed if AuthContext is NOT still loading
       if (authLoading) {
-        console.log('AuthContext is still loading, deferring fetch.');
         return; // Defer the fetch until AuthContext has completed its initial verification
       }
 
-      // If AuthContext is done loading but no token is present, show authentication error
       if (!authToken) {
-        //console.log('No authToken found after AuthContext loaded, setting error and stopping fetch.');
         setError('Authentication required to fetch settings.');
-        setLoading(false); // Stop this component's loading animation
+        setLoading(false);
         return;
       }
 
-      //console.log('AuthContext loaded and authToken is present. Attempting to fetch notification settings...');
       try {
-      //console.log('Making GET request to:', `${NOTIFICATION_SERVICE_BASE_URL}/api/users/me/notifications`);
-        
         // Create an AbortController to implement a timeout
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), 10000); // Set timeout to 10 seconds
 
+        // Using direct fetch for GET, as previously debugged
         const response = await fetch(`${NOTIFICATION_SERVICE_BASE_URL}/api/users/me/notifications`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${authToken}`,
           },
-          signal: controller.signal // Attach the signal to the fetch request
+          signal: controller.signal
         });
 
         clearTimeout(id); // Clear the timeout if fetch completes within the time limit
-        //console.log('Direct fetch request completed. Checking response.ok...');
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -82,17 +74,14 @@ const NotificationSettings = () => {
                 ? data.notification_time_offsets.split(',').map(Number)
                 : []),
         });
-        console.log('Notification settings fetched successfully.');
       } catch (err) {
         if (err.name === 'AbortError') {
-          //console.error('Fetch request timed out:', err);
           setError('Failed to fetch settings: Request timed out. The backend might not be responding or there\'s a network issue.');
         } else {
-          console.error('Error fetching settings:', err);
           setError(err.message);
         }
       } finally {
-        setLoading(false); // Always stop loading, regardless of success or error
+        setLoading(false);
       }
     };
 
@@ -144,13 +133,13 @@ const NotificationSettings = () => {
     }
 
     try {
+      // Using authAxios for PUT requests
       const response = await authAxios(`${NOTIFICATION_SERVICE_BASE_URL}/api/users/me/notifications`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          // authAxios automatically adds the Authorization header
         },
-        body: JSON.stringify(settings), // Send the entire settings object
+        body: JSON.stringify(settings),
       });
 
       if (!response.ok) {
@@ -160,7 +149,6 @@ const NotificationSettings = () => {
 
       setMessage('Notification settings updated successfully!');
     } catch (err) {
-      console.error('Error updating settings:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -169,17 +157,15 @@ const NotificationSettings = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
-      <Header /> {/* Your existing Header component */}
+      {/* Removed <Header /> from here. The main App.jsx will render the global Header. */}
       <div className="flex-grow flex items-center justify-center p-4">
         <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-md">
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Notification Settings</h2>
 
-          {/* Display loading based on this component's state */}
           {loading && <p className="text-center text-blue-500">Loading settings...</p>}
           {error && <p className="text-center text-red-500">{error}</p>}
           {message && <p className="text-center text-green-500">{message}</p>}
 
-          {/* Only render form if not loading and no error */}
           {!loading && !error && (
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Email Notifications */}
