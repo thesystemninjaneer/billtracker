@@ -11,7 +11,13 @@ const { startNotificationScheduler } = require('./src/scheduler');
 const { setupSSE } = require('./src/services/notificationService');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-
+// Enable CORS for frontend app
+const corsOptions = {
+  origin: 'http://localhost:8080', // Specify the allowed origin(s)
+  methods: ['GET', 'POST', 'HEAD', 'PUT', 'PATCH', 'DELETE'], // Specify allowed HTTP methods
+  allowedHeaders: ['Authorization', 'Content-Type'], // Specify allowed request headers
+  credentials: true, // Allow cookies and authentication credentials
+};
 
 const app = express();
 const jwtSecret = process.env.JWT_SECRET;
@@ -26,13 +32,6 @@ app.set('views', path.join(__dirname, 'src/views')); // EJS templates are in src
 // Serve static files (CSS, client-side JS)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Enable CORS for frontend app
-const corsOptions = {
-  origin: 'http://localhost:8080', // Specify the allowed origin(s)
-  methods: ['GET', 'POST', 'HEAD', 'PUT', 'PATCH', 'DELETE'], // Specify allowed HTTP methods
-  allowedHeaders: ['Authorization: Bearer'], // Specify allowed request headers
-  credentials: true, // Allow cookies and authentication credentials
-};
 
 
 
