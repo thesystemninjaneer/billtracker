@@ -1,0 +1,251 @@
+<!-- backend/notification-service/settings.ejs
+    This file handles the notification settings for users, allowing them to configure email, Slack, and in
+    app notifications, as well as reminder intervals. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification Settings - Bill Tracker</title>
+    <link rel="stylesheet" href="/css/style.css"> <!-- Link to your main CSS file -->
+    <style>
+        /* Basic styling for the settings form - you can integrate this into your existing CSS */
+        .settings-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-family: Arial, sans-serif;
+        }
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .form-group label {
+            margin-left: 10px;
+            flex: 1;
+            cursor: pointer;
+        }
+        .form-group input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%; /* Take full width */
+            margin-top: 5px;
+        }
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 0.8em;
+        }
+        .reminder-offsets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+            border: 1px solid #eee;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .reminder-offsets div {
+            display: flex;
+            align-items: center;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 20px;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        #message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        #message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <%- include('partials/header') %> <!-- Assuming you have a header partial -->
+
+    <div class="settings-container">
+        <h2>Notification Settings</h2>
+        <form id="notificationSettingsForm">
+            <div class="form-group">
+                <input type="checkbox" id="is_email_notification_enabled" name="is_email_notification_enabled">
+                <label for="is_email_notification_enabled">Enable Email Notifications</label>
+            </div>
+
+            <div class="form-group">
+                <input type="checkbox" id="is_slack_notification_enabled" name="is_slack_notification_enabled">
+                <label for="is_slack_notification_enabled">Enable Slack Messages</label>
+            </div>
+            <div id="slackWebhookGroup" class="form-group" style="display: none; flex-direction: column; align-items: flex-start;">
+                <label for="slack_webhook_url" style="margin-bottom: 5px;">Slack Webhook URL:</label>
+                <input type="text" id="slack_webhook_url" name="slack_webhook_url" placeholder="Enter your Slack Incoming Webhook URL">
+                <small>
+                    Get this from Slack: "Integrations" &gt; "Incoming WebHooks".
+                    Ensure it posts to the correct channel.
+                </small>
+            </div>
+
+            <div class="form-group">
+                <input type="checkbox" id="in_app_alerts_enabled" name="in_app_alerts_enabled">
+                <label for="in_app_alerts_enabled">Enable In-App Alerts</label>
+            </div>
+
+            <h3>Reminder Intervals (Days before due date)</h3>
+            <div class="form-group reminder-offsets">
+                <!-- Values should match what you expect in your backend (e.g., [0, 1, 3, 7, 14, 30]) -->
+                <div><input type="checkbox" id="offset-0" value="0" name="notification_time_offsets"><label for="offset-0">On Due Date</label></div>
+                <div><input type="checkbox" id="offset-1" value="1" name="notification_time_offsets"><label for="offset-1">1 Day</label></div>
+                <div><input type="checkbox" id="offset-3" value="3" name="notification_time_offsets"><label for="offset-3">3 Days</label></div>
+                <div><input type="checkbox" id="offset-7" value="7" name="notification_time_offsets"><label for="offset-7">7 Days</label></div>
+                <div><input type="checkbox" id="offset-14" value="14" name="notification_time_offsets"><label for="offset-14">14 Days</label></div>
+                <div><input type="checkbox" id="offset-30" value="30" name="notification_time_offsets"><label for="offset-30">30 Days</label></div>
+            </div>
+
+            <button type="submit" id="saveSettingsBtn">Save Settings</button>
+        </form>
+        <p id="message"></p>
+    </div>
+
+    <script>
+        // Client-side JavaScript for handling the form
+        document.addEventListener('DOMContentLoaded', async () => {
+            const form = document.getElementById('notificationSettingsForm');
+            const saveBtn = document.getElementById('saveSettingsBtn');
+            const messageEl = document.getElementById('message');
+            const slackToggle = document.getElementById('is_slack_notification_enabled');
+            const slackWebhookGroup = document.getElementById('slackWebhookGroup');
+            const slackWebhookInput = document.getElementById('slack_webhook_url');
+
+            // Function to show messages
+            const showMessage = (msg, type = 'info') => {
+                messageEl.textContent = msg;
+                messageEl.className = ''; // Clear previous classes
+                messageEl.classList.add(type);
+                setTimeout(() => {
+                    messageEl.textContent = '';
+                    messageEl.className = '';
+                }, 3003); // Clear message after 5 seconds
+            };
+
+            // Function to toggle Slack webhook input visibility
+            const toggleSlackWebhookInput = () => {
+                if (slackToggle.checked) {
+                    slackWebhookGroup.style.display = 'flex';
+                } else {
+                    slackWebhookGroup.style.display = 'none';
+                    slackWebhookInput.value = ''; // Clear if disabled
+                }
+            };
+
+            slackToggle.addEventListener('change', toggleSlackWebhookInput);
+
+            // Fetch current settings
+            try {
+                // IMPORTANT: Replace 'YOUR_AUTH_TOKEN_HERE' with actual token retrieval logic
+                // This token must be sent with every authenticated API request.
+                // Example: from a cookie, localStorage, or a global variable set by your server.
+                const authToken = 'YOUR_AUTH_TOKEN_HERE'; // <<< REPLACE THIS
+                if (!authToken || authToken === 'YOUR_AUTH_TOKEN_HERE') {
+                    console.warn("Authentication token not set. API requests may fail.");
+                    showMessage("Authentication token is missing. Please log in.", "error");
+                    // Potentially redirect to login page
+                }
+
+                const response = await fetch('/api/users/me/notifications', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to fetch settings');
+                }
+                const settings = await response.json();
+
+                document.getElementById('is_email_notification_enabled').checked = settings.is_email_notification_enabled;
+                document.getElementById('is_slack_notification_enabled').checked = settings.is_slack_notification_enabled;
+                document.getElementById('in_app_alerts_enabled').checked = settings.in_app_alerts_enabled;
+                slackWebhookInput.value = settings.slack_webhook_url || '';
+
+                // Set reminder offsets
+                const offsetCheckboxes = document.querySelectorAll('input[name="notification_time_offsets"]');
+                offsetCheckboxes.forEach(checkbox => {
+                    checkbox.checked = (settings.notification_time_offsets || []).includes(parseInt(checkbox.value));
+                });
+
+                toggleSlackWebhookInput(); // Set initial visibility based on fetched settings
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                showMessage(`Failed to load settings: ${error.message}`, "error");
+            }
+
+            // Handle form submission
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                saveBtn.disabled = true;
+                showMessage(''); // Clear previous messages
+
+                const formData = {
+                    is_email_notification_enabled: document.getElementById('is_email_notification_enabled').checked,
+                    is_slack_notification_enabled: document.getElementById('is_slack_notification_enabled').checked,
+                    slack_webhook_url: slackWebhookInput.value,
+                    in_app_alerts_enabled: document.getElementById('in_app_alerts_enabled').checked,
+                    notification_time_offsets: Array.from(document.querySelectorAll('input[name="notification_time_offsets"]:checked'))
+                                                    .map(cb => parseInt(cb.value)),
+                };
+
+                try {
+                    const authToken = 'YOUR_AUTH_TOKEN_HERE'; // <<< REPLACE THIS
+                    const response = await fetch('/api/users/me/notifications', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify(formData),
+                    });
+
+                    const result = await response.json();
+                    if (response.ok) {
+                        showMessage(result.message || 'Settings saved successfully!', "success");
+                    } else {
+                        throw new Error(result.message || 'Failed to save settings.');
+                    }
+                } catch (error) {
+                    console.error('Error saving settings:', error);
+                    showMessage(`Error saving settings: ${error.message}`, "error");
+                } finally {
+                    saveBtn.disabled = false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

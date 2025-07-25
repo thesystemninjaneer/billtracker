@@ -16,9 +16,9 @@ function Header() {
             <>
               <Link to="/">Dashboard</Link>
               <Link to="/add-organization">Add Org</Link>
-              <Link to="/add-bill">Add Bill</Link> {/* New link */}
+              <Link to="/add-bill">Add Bill</Link>
               <Link to="/record-payment">Record Payment</Link>
-              <span className="user-info">Hello, {user?.username}!</span>
+              <span className="user-info">Hello, <Link to="/settings/notifications">{user?.username}</Link>!</span>
               <button onClick={logout} className="logout-btn">Logout</button>
             </>
           ) : (

@@ -1,7 +1,8 @@
 const config = {
   ORGANIZATION_API_BASE_URL: 'http://localhost:3001/organizations',
   USER_API_BASE_URL: 'http://localhost:3000',
-  BILL_PAYMENT_API_BASE_URL: 'http://localhost:3002', // Base URL for Bill Payment Service
+  BILL_PAYMENT_API_BASE_URL: 'http://localhost:3002',
+  NOTIFICATION_SERVICE_BASE_URL: 'http://localhost:3003'
 };
 
 export default config;
