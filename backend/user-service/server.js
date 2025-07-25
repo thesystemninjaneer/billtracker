@@ -2,16 +2,27 @@ require('dotenv').config(); // Load environment variables from .env
 
 const express = require('express');
 const mysql = require('mysql2/promise');
-const cors = require('cors');
+const cors = require('cors'); // Ensure 'cors' is installed (npm install cors)
 const bcrypt = require('bcryptjs'); // For password hashing
 const jwt = require('jsonwebtoken'); // For JWT token generation
 
 const app = express();
-const port = process.env.SERVICE_PORT || 3000;
+const port = process.env.SERVICE_PORT || 3000; // User Service typically runs on port 3000
 const jwtSecret = process.env.JWT_SECRET; // Your JWT secret key
 
-// Middleware
-app.use(cors()); // Enable CORS for all routes
+// --- Middleware ---
+
+// Configure CORS to allow requests from your frontend's origin
+// This block must come BEFORE app.use(cors(corsOptions));
+const corsOptions = {
+    origin: 'http://localhost:8080', // Allow your frontend's origin
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allow these HTTP methods
+    credentials: true, // Allow cookies to be sent (if you use them for auth)
+    optionsSuccessStatus: 204, // Some legacy browsers (IE11, various SmartTVs) choke on 200
+    allowedHeaders: ['Content-Type', 'Authorization'] // Crucial: Explicitly allow Authorization header
+};
+app.use(cors(corsOptions)); // Enable CORS with specific options
+
 app.use(express.json()); // For parsing application/json
 
 // Database connection pool
@@ -184,6 +195,65 @@ app.get('/profile', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching user profile:', error);
     res.status(500).json({ message: 'Server error fetching profile.' });
+  }
+});
+
+/**
+ * @route PUT /api/users/me/profile
+ * @desc Update authenticated user's username and email
+ * @access Private (requires JWT)
+ */
+app.put('/api/users/me/profile', authenticateToken, async (req, res) => {
+  const { username, email } = req.body;
+  const userId = req.user.id; // Get user ID from authenticated token
+
+  if (!username && !email) {
+    return res.status(400).json({ message: 'At least username or email is required for update.' });
+  }
+
+  try {
+    let updateFields = [];
+    let updateValues = [];
+
+    // Check for existing username/email if they are being updated
+    if (username) {
+      const [existingUsernames] = await pool.execute(
+        'SELECT id FROM users WHERE username = ? AND id != ?',
+        [username, userId]
+      );
+      if (existingUsernames.length > 0) {
+        return res.status(409).json({ message: 'This username is already taken by another user.' });
+      }
+      updateFields.push('username = ?');
+      updateValues.push(username);
+    }
+
+    if (email) {
+      const [existingEmails] = await pool.execute(
+        'SELECT id FROM users WHERE email = ? AND id != ?',
+        [email, userId]
+      );
+      if (existingEmails.length > 0) {
+        return res.status(409).json({ message: 'This email is already registered by another user.' });
+      }
+      updateFields.push('email = ?');
+      updateValues.push(email);
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ message: 'No valid fields provided for update.' });
+    }
+
+    const sql = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`;
+    updateValues.push(userId);
+
+    await pool.execute(sql, updateValues);
+
+    res.status(200).json({ message: 'User profile updated successfully.' });
+
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    res.status(500).json({ message: 'Server error during profile update.' });
   }
 });
 
