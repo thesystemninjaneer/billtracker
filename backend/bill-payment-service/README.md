@@ -49,16 +49,24 @@ Foreign Keys: We establish relationships between users, organizations, and these
 
 Make sure to have first completed the backend/db, backend/user-service, backend/organizations-service README.md build/test instructions before starting these.
 
-1. Rebuild and Restart All Backend Services:
-2. From your project root (where docker-compose.yml is), run the following to rebuild the bill-payment-service image and restart all services.
+1. install dependencies
+   ```
+   billtracker/backend/bill-payment-service$ npm install cors dotenv express jsonwebtoken mysql axios
+   ```
+2. Rebuild and Restart All Backend Services:
+   ```
+   ./billtracker$ docker compose -f my-bill-tracker/docker-compose.yaml down
+   ```
+3. From your project root (where docker-compose.yml is), run the following to rebuild the bill-payment-service image and restart all services.
    ```
    ./billtracker$ docker compose -f my-bill-tracker/docker-compose.yaml up --build -d
    ```
-3. Verify Backend Logs to confirm it starts without errors by checking the logs for bill-payment-service:
-     ```
-     ./billtracker$ docker logs -f bill-tracker-bill-payment-service
-     ```
-4. Test the API Endpoints (using Postman/Insomnia/curl):
+4. Verify Backend Logs to confirm it starts without errors by checking the logs for bill-payment-service:
+   ```
+   ./billtracker$ docker logs -f bill-tracker-bill-payment-service
+   ```
+5. Test the API Endpoints (using Postman/Insomnia/curl):
+6. Test the slack integration by navigating to the frontend > Settings > enter a slack webhook > select Validate.
 
 The base URL for the Bill Payment Service is http://localhost:3002. Remember to include the `Authorization: Bearer <YOUR_JWT_TOKEN>` header for all requests (get your token by logging in via the frontend or using the User Service /login endpoint).
 

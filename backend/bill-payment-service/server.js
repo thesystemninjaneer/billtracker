@@ -4,6 +4,7 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 
 const app = express();
 const port = process.env.SERVICE_PORT || 3002;
@@ -63,6 +64,8 @@ const authenticateToken = (req, res, next) => {
 // Apply authentication middleware to all bill payment routes
 app.use('/bills', authenticateToken);
 app.use('/payments', authenticateToken);
+// Apply authentication to the notification test endpoint
+app.use('/api/notifications/test-slack', authenticateToken);
 
 
 // --- API Endpoints for Bills (Recurring Entries) ---
@@ -500,11 +503,61 @@ app.delete('/payments/:id', async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Payment record not found or not authorized to delete.' });
     }
-    res.status(200).json({ message: 'Payment record deleted successfully.' });
+    res.status(200).json({ message: 'Server error deleting payment record.' });
   } catch (error) {
     console.error('Error deleting payment record:', error);
     res.status(500).json({ message: 'Server error deleting payment record.' });
   }
+});
+
+// NEW: API Endpoint to send a test Slack notification
+/**
+ * @route POST /api/notifications/test-slack
+ * @desc Send a test Slack notification to the user's configured webhook.
+ * @access Private (requires JWT)
+ */
+app.post('/api/notifications/test-slack', async (req, res) => {
+    const user_id = req.user.id; // Get user ID from authenticated token
+
+    try {
+        // Fetch user's Slack webhook URL and username from the 'users' table
+        const [userRows] = await pool.execute(
+            `SELECT slack_webhook_url, username FROM users WHERE id = ?`,
+            [user_id]
+        );
+
+        if (userRows.length === 0) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        const { slack_webhook_url, username } = userRows[0];
+
+        if (!slack_webhook_url) {
+            return res.status(400).json({ message: 'Slack webhook URL not configured for this user.' });
+        }
+
+        // Construct the test message payload
+        const testMessage = {
+            text: `BillTracker test message from ${username || 'your account'}. Your Slack webhook is working!`,
+        };
+
+        // Send the message to Slack
+        await axios.post(slack_webhook_url, testMessage, {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        res.status(200).json({ message: 'Test Slack message sent successfully!' });
+
+    } catch (error) {
+        console.error('Error sending test Slack message:', error.message);
+        // Check if it's an Axios error (e.g., invalid webhook URL)
+        if (axios.isAxiosError(error) && error.response) {
+            return res.status(400).json({ message: `Failed to send test message: Slack responded with status ${error.response.status} - ${error.response.statusText}. Please check your webhook URL.` });
+        }
+        res.status(500).json({ message: 'Server error sending test Slack message.' });
+    }
 });
 
 

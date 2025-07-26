@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import config from '../config'; // Assuming config.js has USER_API_BASE_URL
+import config from '../config'; // Import config to get USER_API_BASE_URL and BILL_PAYMENT_API_BASE_URL
 
 const UserProfile = () => {
   const { token: authToken, isAuthenticated, loading: authLoading, authAxios, user: authContextUser, setUser: setAuthContextUser } = useContext(AuthContext);
@@ -56,6 +56,7 @@ const UserProfile = () => {
         });
 
         // --- Fetch Notification Settings ---
+        // Notification settings are now fetched from the user-service
         const notificationSettingsResponse = await authAxios(`${config.USER_API_BASE_URL}/api/users/me/notifications`, {
           method: 'GET',
         });
@@ -132,6 +133,49 @@ const UserProfile = () => {
       ),
     }));
   };
+
+  // NEW: Handler for sending test Slack message
+  const handleTestSlackMessage = async () => {
+    setMessage(''); // Clear previous messages
+    setError(null);
+    setLoading(true); // Indicate loading for the test
+
+    if (!notificationSettings.is_slack_notification_enabled) {
+      setError('Slack notifications are not enabled. Please enable them first.');
+      setLoading(false);
+      return;
+    }
+    if (!notificationSettings.slack_webhook_url) {
+      setError('Slack webhook URL is empty. Please provide a valid URL.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Make the POST request to the new backend endpoint
+      const response = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/api/notifications/test-slack`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // No body needed, as the backend fetches webhook URL and username
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to send test message with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setMessage(data.message || 'Test Slack message sent successfully!');
+    } catch (err) {
+      console.error('Error sending test Slack message:', err);
+      setError(err.message || 'Failed to send test Slack message.');
+    } finally {
+      setLoading(false); // End loading regardless of success/failure
+    }
+  };
+
 
   // Combined Submit Handler for both profile and notification settings
   const handleSubmit = async (e) => {
@@ -225,7 +269,7 @@ const UserProfile = () => {
                   id="email"
                   name="email"
                   value={userProfile.email}
-                  onChange={handleProfileChange} 
+                  onChange={handleProfileChange}
                   className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-lg"
                   required
                 />
@@ -271,15 +315,25 @@ const UserProfile = () => {
                   <label htmlFor="slack_webhook_url" className="block text-lg font-medium text-gray-700 mb-2">
                     Slack Webhook URL
                   </label>
-                  <input
-                    type="url"
-                    id="slack_webhook_url"
-                    name="slack_webhook_url"
-                    value={notificationSettings.slack_webhook_url || ''}
-                    onChange={handleNotificationChange}
-                    className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-lg"
-                    placeholder="https://hooks.slack.com/services/..."
-                  />
+                  <div className="flex items-center gap-2"> 
+                    <input
+                      type="url"
+                      id="slack_webhook_url"
+                      name="slack_webhook_url"
+                      value={notificationSettings.slack_webhook_url || ''}
+                      onChange={handleNotificationChange}
+                      className="flex-grow px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-lg"
+                      placeholder="https://hooks.slack.com/services/..."
+                    />
+                    <button
+                      type="button"
+                      onClick={handleTestSlackMessage}
+                      className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={loading || !notificationSettings.slack_webhook_url}
+                    >
+                      Validate
+                    </button>
+                  </div>
                 </div>
               )}
 

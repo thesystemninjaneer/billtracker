@@ -354,12 +354,11 @@ Added a link to the new "Add Bill" form.
 
 ## Running the Integrated Frontend
 
-    Ensure all backend services are running:
-    From your project root (where docker-compose.yml is), run:
-    Bash
-
+Ensure all backend services are running:
+- From your project root (where docker-compose.yml is), run:
+```
 docker compose up --build -d
-
+```
 Confirm bill-tracker-mysql, bill-tracker-organization-service, and bill-tracker-bill-payment-service are all running and healthy.
 
 Start the React frontend:
@@ -412,6 +411,15 @@ The existing services were additionally refined tp provide the following.
 - Deploying the application.
 
 Continue reading for additional details on the refinement. 
+
+## Slack Testing
+
+1. Log in to your application.
+2. Navigate to http://localhost:8080/settings.
+3. Enable "Enable Slack Notifications" and enter a valid Slack Webhook URL.
+4. Click the "Validate" button next to the Slack Webhook URL field.
+5. Check your Slack channel for the test message. You should see "BillTracker test message from [Your Username]..."
+6. SAlso, observe the success/error messages displayed on the User Profile page.
 
 ## Local Development / Contributing
 
