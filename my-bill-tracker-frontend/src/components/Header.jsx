@@ -19,6 +19,7 @@ function Header() {
               <Link to="/add-bill">Add Bill</Link>
               <Link to="/record-payment">Record Payment</Link>
               <span className="user-info">Hello, <Link to="/settings/notifications">{user?.username}</Link>!</span>
+              <Link to="/settings/profile">Profile</Link>
               <button onClick={logout} className="logout-btn">Logout</button>
             </>
           ) : (
