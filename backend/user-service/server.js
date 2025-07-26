@@ -2,27 +2,23 @@ require('dotenv').config(); // Load environment variables from .env
 
 const express = require('express');
 const mysql = require('mysql2/promise');
-const cors = require('cors'); // Ensure 'cors' is installed (npm install cors)
+const cors = require('cors');
 const bcrypt = require('bcryptjs'); // For password hashing
 const jwt = require('jsonwebtoken'); // For JWT token generation
 
 const app = express();
-const port = process.env.SERVICE_PORT || 3000; // User Service typically runs on port 3000
+const port = process.env.SERVICE_PORT || 3000;
 const jwtSecret = process.env.JWT_SECRET; // Your JWT secret key
 
-// --- Middleware ---
-
-// Configure CORS to allow requests from your frontend's origin
-// This block must come BEFORE app.use(cors(corsOptions));
+// Middleware
 const corsOptions = {
     origin: 'http://localhost:8080', // Allow your frontend's origin
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allow these HTTP methods
-    credentials: true, // Allow cookies to be sent (if you use them for auth)
-    optionsSuccessStatus: 204, // Some legacy browsers (IE11, various SmartTVs) choke on 200
-    allowedHeaders: ['Content-Type', 'Authorization'] // Crucial: Explicitly allow Authorization header
+    credentials: true, // Allow cookies to be sent
+    optionsSuccessStatus: 204,
+    allowedHeaders: ['Content-Type', 'Authorization'] // Explicitly allow Authorization header
 };
 app.use(cors(corsOptions)); // Enable CORS with specific options
-
 app.use(express.json()); // For parsing application/json
 
 // Database connection pool
@@ -255,6 +251,86 @@ app.put('/api/users/me/profile', authenticateToken, async (req, res) => {
     console.error('Error updating user profile:', error);
     res.status(500).json({ message: 'Server error during profile update.' });
   }
+});
+
+// --- NNotification Settings API Endpoints (Moved from notification-service) ---
+
+/**
+ * @route GET /api/users/me/notifications
+ * @desc Get authenticated user's notification settings
+ * @access Private (requires JWT)
+ */
+app.get('/api/users/me/notifications', authenticateToken, async (req, res) => {
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ message: 'Unauthorized' });
+    }
+    try {
+        const [settingsRows] = await pool.execute( // Use pool.execute for consistency
+            `SELECT is_email_notification_enabled, is_slack_notification_enabled,
+                     slack_webhook_url, in_app_alerts_enabled, notification_time_offsets
+             FROM users WHERE id = ?`,
+            [req.user.id]
+        );
+        const settings = settingsRows[0];
+        if (!settings) return res.status(404).json({ message: 'User not found' });
+
+        // Parse notification_time_offsets from comma-separated string to array for frontend
+        settings.notification_time_offsets = settings.notification_time_offsets
+            ? settings.notification_time_offsets.split(',').map(Number)
+            : [];
+
+        res.json(settings);
+    } catch (error) {
+        console.error("Error fetching notification settings:", error);
+        res.status(500).json({ message: 'Failed to fetch notification settings' });
+    }
+});
+
+/**
+ * @route PUT /api/users/me/notifications
+ * @desc Update authenticated user's notification settings
+ * @access Private (requires JWT)
+ */
+app.put('/api/users/me/notifications', authenticateToken, async (req, res) => {
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const {
+        is_email_notification_enabled,
+        is_slack_notification_enabled,
+        slack_webhook_url,
+        in_app_alerts_enabled,
+        notification_time_offsets // This will be an array from frontend
+    } = req.body;
+
+    try {
+        // Convert notification_time_offsets array to comma-separated string for MySQL storage
+        const offsetsString = Array.isArray(notification_time_offsets)
+            ? notification_time_offsets.join(',')
+            : '';
+
+        await pool.execute( // Use pool.execute for consistency
+            `UPDATE users
+             SET is_email_notification_enabled = ?,
+                 is_slack_notification_enabled = ?,
+                 slack_webhook_url = ?,
+                 in_app_alerts_enabled = ?,
+                 notification_time_offsets = ?
+             WHERE id = ?`,
+            [
+                is_email_notification_enabled,
+                is_slack_notification_enabled,
+                slack_webhook_url,
+                in_app_alerts_enabled,
+                offsetsString, // Store as string
+                req.user.id
+            ]
+        );
+        res.status(200).json({ message: 'Notification settings updated successfully' });
+    } catch (error) {
+        console.error("Error updating notification settings:", error);
+        res.status(500).json({ message: 'Failed to update notification settings' });
+    }
 });
 
 

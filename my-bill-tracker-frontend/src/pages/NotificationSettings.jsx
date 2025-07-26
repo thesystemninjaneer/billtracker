@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-// Header import removed as it's provided by App.jsx's layout
-// import Header from '../components/Header'; // Removed this line
+import config from '../config'; // Import config to get USER_API_BASE_URL
 
 // Define the base URL for your notification service backend
-// Make sure this matches the port your notification service is actually running on (e.g., 3003)
-const NOTIFICATION_SERVICE_BASE_URL = 'http://localhost:3003';
+// Use the USER_API_BASE_URL from your config.js
+// The notification settings API endpoints are now on the user service.
+const USER_API_BASE_URL = config.USER_API_BASE_URL;
 
 const NotificationSettings = () => {
   const { token: authToken, isAuthenticated, loading: authLoading, authAxios } = useContext(AuthContext);
@@ -23,13 +23,6 @@ const NotificationSettings = () => {
   const [newOffsetInput, setNewOffsetInput] = useState('');
 
   useEffect(() => {
-    // --- Debugging Logs ---
-    // console.log('NotificationSettings useEffect triggered.');
-    // console.log('Current authToken:', authToken ? 'Present' : 'Not present'); // Log presence, not full token
-    // console.log('AuthContext isAuthenticated:', isAuthenticated);
-    // console.log('AuthContext authLoading:', authLoading);
-    // --- End Debugging Logs ---
-
     const fetchSettings = async () => {
       if (authLoading) {
         return; // Defer the fetch until AuthContext has completed its initial verification
@@ -42,21 +35,16 @@ const NotificationSettings = () => {
       }
 
       try {
-        // Create an AbortController to implement a timeout
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), 10000); // Set timeout to 10 seconds
 
-        // Using direct fetch for GET, as previously debugged
-        const response = await fetch(`${NOTIFICATION_SERVICE_BASE_URL}/api/users/me/notifications`, {
+        // UPDATED: Use USER_API_BASE_URL for fetching settings
+        const response = await authAxios(`${USER_API_BASE_URL}/api/users/me/notifications`, {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`,
-          },
           signal: controller.signal
         });
 
-        clearTimeout(id); // Clear the timeout if fetch completes within the time limit
+        clearTimeout(id);
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -86,7 +74,7 @@ const NotificationSettings = () => {
     };
 
     fetchSettings();
-  }, [authToken, isAuthenticated, authLoading]);
+  }, [authToken, isAuthenticated, authLoading, authAxios, USER_API_BASE_URL]); // Dependency changed
 
   const handleChange = (e) => {
     const { name, type, checked, value } = e.target;
@@ -103,7 +91,7 @@ const NotificationSettings = () => {
         ...prevSettings,
         notification_time_offsets: [...prevSettings.notification_time_offsets, offset].sort((a, b) => a - b),
       }));
-      setNewOffsetInput(''); // Clear input after adding
+      setNewOffsetInput('');
     } else if (isNaN(offset) || offset <= 0) {
       setMessage('Please enter a valid positive number for offset.');
     } else if (settings.notification_time_offsets.includes(offset)) {
@@ -133,8 +121,7 @@ const NotificationSettings = () => {
     }
 
     try {
-      // Using authAxios for PUT requests
-      const response = await authAxios(`${NOTIFICATION_SERVICE_BASE_URL}/api/users/me/notifications`, {
+      const response = await authAxios(`${USER_API_BASE_URL}/api/users/me/notifications`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -157,7 +144,6 @@ const NotificationSettings = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
-      {/* Removed <Header /> from here. The main App.jsx will render the global Header. */}
       <div className="flex-grow flex items-center justify-center p-4">
         <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-md">
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Notification Settings</h2>
