@@ -196,34 +196,23 @@ app.get('/profile', authenticateToken, async (req, res) => {
 
 /**
  * @route PUT /api/users/me/profile
- * @desc Update authenticated user's username and email
+ * @desc Update authenticated user's email
  * @access Private (requires JWT)
  */
 app.put('/api/users/me/profile', authenticateToken, async (req, res) => {
-  const { username, email } = req.body;
+  const { email } = req.body;
   const userId = req.user.id; // Get user ID from authenticated token
 
-  if (!username && !email) {
-    return res.status(400).json({ message: 'At least username or email is required for update.' });
+  if (!email) {
+    return res.status(400).json({ message: 'Email is required for profile update.' });
   }
 
   try {
     let updateFields = [];
     let updateValues = [];
 
-    // Check for existing username/email if they are being updated
-    if (username) {
-      const [existingUsernames] = await pool.execute(
-        'SELECT id FROM users WHERE username = ? AND id != ?',
-        [username, userId]
-      );
-      if (existingUsernames.length > 0) {
-        return res.status(409).json({ message: 'This username is already taken by another user.' });
-      }
-      updateFields.push('username = ?');
-      updateValues.push(username);
-    }
 
+    // Check for existing email if it is being updated
     if (email) {
       const [existingEmails] = await pool.execute(
         'SELECT id FROM users WHERE email = ? AND id != ?',
@@ -253,7 +242,7 @@ app.put('/api/users/me/profile', authenticateToken, async (req, res) => {
   }
 });
 
-// --- NNotification Settings API Endpoints (Moved from notification-service) ---
+// --- Notification Settings API Endpoints (Moved from notification-service) ---
 
 /**
  * @route GET /api/users/me/notifications

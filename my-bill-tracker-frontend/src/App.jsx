@@ -8,8 +8,7 @@ import AddBillForm from './pages/AddBillForm.jsx';
 import Register from './pages/Register.jsx';
 import Login from './pages/Login.jsx';
 import NotFound from './pages/NotFound.jsx';
-import NotificationSettings from './pages/NotificationSettings';
-import UserProfile from './pages/UserProfile'; // Import the new UserProfile component
+import UserProfile from './pages/UserProfile'; // handles all settings
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import './App.css';
 
@@ -87,18 +86,9 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          {/* Route for Notification Settings */}
+          {/* Combined User Settings Route (UserProfile handles all settings) */}
           <Route
-            path="/settings/notifications"
-            element={
-              <ProtectedRoute>
-                <NotificationSettings />
-              </ProtectedRoute>
-            }
-          />
-          {/* NEW: Route for User Profile Settings */}
-          <Route
-            path="/settings/profile"
+            path="/settings"
             element={
               <ProtectedRoute>
                 <UserProfile />
