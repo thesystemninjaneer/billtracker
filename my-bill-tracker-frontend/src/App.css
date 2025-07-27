@@ -1,9 +1,23 @@
+/* my-bill-tracker-frontend/src/App.css */
+
+/* Basic body styling for full height - CRITICAL for fixed positioning */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  /* Ensure no hidden overflow on these root elements */
+  overflow-x: hidden; /* Prevent horizontal scroll, but allow vertical */
+  overflow-y: auto;   /* Allow vertical scroll */
+}
+
+/* Flex container for header and main content */
 .app-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100vh; /* Ensures it takes at least full viewport height */
 }
 
+/* Main content area to take remaining space */
 .content {
   flex-grow: 1;
   padding: 20px;
@@ -22,3 +36,6 @@
   font-size: 1.5em;
   color: #3498db;
 }
+
+/* No specific custom CSS for the toast is typically needed if Tailwind is configured correctly,
+   as the classes like 'fixed', 'bottom-4', 'right-4', 'z-50' should handle positioning. */

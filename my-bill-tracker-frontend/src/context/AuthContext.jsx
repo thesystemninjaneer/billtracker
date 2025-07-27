@@ -1,29 +1,61 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../config';
 
-export const AuthContext = createContext();
+export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null); // Stores user info from JWT payload
-  const [token, setToken] = useState(localStorage.getItem('token') || null);
-  const [loading, setLoading] = useState(true); // To check initial token validity
-  const navigate = useNavigate();
+  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!token); // Keep as state for clarity
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate(); // Initialize useNavigate
+
+  // Logout function (defined early for use in authAxios and useEffect)
+  const logout = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('token');
+    navigate('/login'); // Redirect to login page on logout
+  }, [navigate]);
+
+  // Custom fetch wrapper that includes the Authorization header
+  const authAxios = useCallback(async (url, options = {}) => {
+    const headers = {
+      ...options.headers,
+      'Content-Type': options.headers && options.headers['Content-Type'] ? options.headers['Content-Type'] : 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+      const response = await fetch(url, { ...options, headers });
+      // If the token is expired or invalid, log out the user
+      if (response.status === 401 || response.status === 403) {
+        console.error('Authentication failed or token expired. Logging out.');
+        logout(); // Call logout function
+      }
+      return response;
+    } catch (error) {
+      console.error('Network or fetch error:', error);
+      throw error; // Re-throw to be caught by calling component
+    }
+  }, [token, logout]); // Depend on token and logout
 
   useEffect(() => {
     const verifyToken = async () => {
       if (token) {
         try {
           // Attempt to fetch profile to verify token validity
-          const response = await fetch(`${config.USER_API_BASE_URL}/profile`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
+          const response = await authAxios(`${config.USER_API_BASE_URL}/profile`, { method: 'GET' });
 
           if (response.ok) {
             const data = await response.json();
             setUser(data.user);
+            setIsAuthenticated(true);
           } else {
             console.error("Token verification failed or expired.");
             logout(); // Log out if token is invalid or expired
@@ -32,13 +64,16 @@ export const AuthProvider = ({ children }) => {
           console.error("Error verifying token:", error);
           logout();
         }
+      } else {
+        setIsAuthenticated(false); // No token, so not authenticated
       }
       setLoading(false);
     };
 
     verifyToken();
-  }, [token]); // Re-run if token changes
+  }, [token, logout, authAxios]); // Re-run if token or authAxios/logout changes
 
+  // Login function
   const login = async (username, password) => {
     try {
       const response = await fetch(`${config.USER_API_BASE_URL}/login`, {
@@ -56,6 +91,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', data.token);
       setToken(data.token);
       setUser(data.user);
+      setIsAuthenticated(true); // Set authenticated on successful login
       navigate('/'); // Redirect to dashboard on successful login
       return { success: true };
     } catch (error) {
@@ -64,6 +100,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Register function
   const register = async (username, email, password) => {
     try {
       const response = await fetch(`${config.USER_API_BASE_URL}/register`, {
@@ -81,6 +118,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', data.token);
       setToken(data.token);
       setUser(data.user);
+      setIsAuthenticated(true); // Set authenticated on successful registration
       navigate('/'); // Redirect to dashboard on successful registration
       return { success: true };
     } catch (error) {
@@ -89,44 +127,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
-    navigate('/login'); // Redirect to login page on logout
-  };
-
-  const authAxios = async (url, options = {}) => {
-    const headers = options.headers || {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    const response = await fetch(url, { ...options, headers });
-    if (response.status === 401 || response.status === 403) {
-      // If unauthorized/forbidden, token might be expired or invalid
-      logout();
-      throw new Error('Session expired or invalid. Please log in again.');
-    }
-    return response;
-  };
-
-  const value = {
-    user,
+  const contextValue = {
     token,
-    isAuthenticated: !!user, // Simplified check
+    setToken,
+    user,
+    setUser,
+    isAuthenticated, // Use the state variable
     loading,
-    login,
-    register,
+    authAxios,
     logout,
-    authAxios // A wrapper for authenticated fetch requests
+    login, // Expose login function
+    register, // Expose register function
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 // Custom hook to use the AuthContext
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  return useContext(AuthContext);
+};

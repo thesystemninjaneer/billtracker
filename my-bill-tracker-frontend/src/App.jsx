@@ -10,34 +10,28 @@ import Login from './pages/Login.jsx';
 import NotFound from './pages/NotFound.jsx';
 import UserProfile from './pages/UserProfile';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
-import config from './config'; // Import config for SSE URL
+import { NotificationProvider, useNotification } from './context/NotificationContext.jsx';
+import config from './config';
 import './App.css';
 
 // Component to display temporary toast messages
 const Toast = ({ message, type, onClose }) => {
-  const bgColor = type === 'error' ? 'bg-red-500' : 'bg-green-500';
+  const bgColor = type === 'error' ? 'bg-red-600' : 'bg-green-600';
   const textColor = 'text-white';
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 5000); // Toast disappears after 5 seconds
-    return () => clearTimeout(timer);
-  }, [onClose]);
+  const borderColor = type === 'error' ? 'border-red-800' : 'border-green-800';
 
   return (
-    <div className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg ${bgColor} ${textColor} z-50`}>
-      {message}
-      <button onClick={onClose} className="ml-4 font-bold">X</button>
+    <div className={`fixed bottom-8 right-8 p-6 rounded-lg shadow-xl border-2 ${borderColor} ${bgColor} ${textColor} z-[100]`}>
+      <p className="font-semibold text-lg">{message}</p>
+      <button onClick={onClose} className="absolute top-2 right-3 text-white hover:text-gray-200 text-xl font-bold">X</button>
     </div>
   );
 };
 
-// NEW: NotificationListener component for Server-Sent Events
+// NotificationListener component (now only listens and updates global state)
 const NotificationListener = () => {
-  const { isAuthenticated, token: authToken } = useAuth();
-  const [toastMessage, setToastMessage] = useState(null);
-  const [toastType, setToastType] = useState('success'); // 'success' or 'error'
+  const { isAuthenticated, token: authToken } = useAuth(); // Still need auth for SSE connection
+  const { setToastMessage, setToastType } = useNotification(); // NEW: Get setters from NotificationContext
 
   useEffect(() => {
     let eventSource;
@@ -54,9 +48,9 @@ const NotificationListener = () => {
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
         console.log('Received SSE:', data);
-        // Display the in-app alert
+        // Update global toast state via NotificationContext
         setToastMessage(data.message);
-        setToastType(data.type === 'error' ? 'error' : 'success'); // Assuming backend sends a 'type'
+        setToastType(data.type === 'error' ? 'error' : 'success');
       };
 
       eventSource.onerror = (error) => {
@@ -76,19 +70,10 @@ const NotificationListener = () => {
         console.log('SSE connection closed on component unmount/re-render.');
       }
     };
-  }, [isAuthenticated, authToken, config.NOTIFICATION_SSE_BASE_URL]);
+  }, [isAuthenticated, authToken, config.NOTIFICATION_SSE_BASE_URL, setToastMessage, setToastType]);
 
-  return (
-    <>
-      {toastMessage && (
-        <Toast
-          message={toastMessage}
-          type={toastType}
-          onClose={() => setToastMessage(null)}
-        />
-      )}
-    </>
-  );
+  // This component no longer renders the Toast directly
+  return null;
 };
 
 
@@ -111,6 +96,13 @@ const ProtectedRoute = ({ children }) => {
 
 // Main application content, wrapped in AuthProvider and Router
 function AppContent() {
+  const { toastMessage, toastType, setToastMessage, setToastType } = useNotification(); // NEW: Get toast state from NotificationContext
+
+  const handleCloseToast = () => {
+    setToastMessage(null);
+    setToastType('success'); // Reset type to default
+  };
+
   return (
     <>
       <Header /> {/* Your common Header component */}
@@ -179,7 +171,16 @@ function AppContent() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      <NotificationListener /> {/* Global Notification Listener */}
+      <NotificationListener /> {/* NotificationListener is still here to listen for SSEs */}
+
+      {/* Toast is rendered globally based on NotificationContext state */}
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={handleCloseToast}
+        />
+      )}
     </>
   );
 }
@@ -189,9 +190,12 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="app-container">
-          <AppContent />
-        </div>
+        {/* NEW: Wrap AppContent with NotificationProvider */}
+        <NotificationProvider>
+          <div className="app-container">
+            <AppContent />
+          </div>
+        </NotificationProvider>
       </AuthProvider>
     </Router>
   );

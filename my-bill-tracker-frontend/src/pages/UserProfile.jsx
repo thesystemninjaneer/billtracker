@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext'; // NEW: Import useNotification
 import config from '../config';
 
 const UserProfile = () => {
   const { token: authToken, isAuthenticated, loading: authLoading, authAxios, user: authContextUser, setUser: setAuthContextUser } = useContext(AuthContext);
+  const { setToastMessage, setToastType } = useNotification(); // NEW: Get toast setters from NotificationContext
 
   // State for User Profile
   const [userProfile, setUserProfile] = useState({
@@ -151,7 +153,6 @@ const UserProfile = () => {
     }
 
     try {
-      // Make the POST request to the new backend endpoint
       const response = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/api/notifications/test-slack`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -185,7 +186,6 @@ const UserProfile = () => {
     }
 
     try {
-      // Call the new backend endpoint in notification-service
       const response = await authAxios(`${config.NOTIFICATION_SSE_BASE_URL}/api/notifications/test-in-app`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -197,10 +197,14 @@ const UserProfile = () => {
       }
 
       const data = await response.json();
-      setMessage(data.message || 'Test in-app alert triggered. Check your screen for the toast!');
+      // Use setToastMessage and setToastType from NotificationContext
+      setToastMessage(data.message || 'Test in-app alert triggered. Check your screen for the toast!');
+      setToastType('success'); // Assuming success for test trigger
     } catch (err) {
       console.error('Error triggering test in-app alert:', err);
-      setError(err.message || 'Failed to trigger test in-app alert.');
+      setToastMessage(err.message || 'Failed to trigger test in-app alert.'); // Show error in toast
+      setToastType('error'); // Set toast type to error
+      setError(err.message || 'Failed to trigger test in-app alert.'); // Also keep local error state
     } finally {
       setLoading(false);
     }
@@ -381,7 +385,7 @@ const UserProfile = () => {
                   className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
                 />
               </div>
-              {/* NEW: Test In-App Alert Button */}
+              {/* Test In-App Alert Button */}
               {notificationSettings.in_app_alerts_enabled && (
                 <div className="mt-4 text-right">
                   <button
