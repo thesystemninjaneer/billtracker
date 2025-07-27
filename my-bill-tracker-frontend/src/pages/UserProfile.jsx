@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import config from '../config'; // Import config to get USER_API_BASE_URL and BILL_PAYMENT_API_BASE_URL
+import config from '../config';
 
 const UserProfile = () => {
   const { token: authToken, isAuthenticated, loading: authLoading, authAxios, user: authContextUser, setUser: setAuthContextUser } = useContext(AuthContext);
@@ -56,7 +56,6 @@ const UserProfile = () => {
         });
 
         // --- Fetch Notification Settings ---
-        // Notification settings are now fetched from the user-service
         const notificationSettingsResponse = await authAxios(`${config.USER_API_BASE_URL}/api/users/me/notifications`, {
           method: 'GET',
         });
@@ -134,11 +133,11 @@ const UserProfile = () => {
     }));
   };
 
-  // NEW: Handler for sending test Slack message
+  // Handler for sending test Slack message
   const handleTestSlackMessage = async () => {
-    setMessage(''); // Clear previous messages
+    setMessage('');
     setError(null);
-    setLoading(true); // Indicate loading for the test
+    setLoading(true);
 
     if (!notificationSettings.is_slack_notification_enabled) {
       setError('Slack notifications are not enabled. Please enable them first.');
@@ -155,10 +154,7 @@ const UserProfile = () => {
       // Make the POST request to the new backend endpoint
       const response = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/api/notifications/test-slack`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // No body needed, as the backend fetches webhook URL and username
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!response.ok) {
@@ -172,7 +168,41 @@ const UserProfile = () => {
       console.error('Error sending test Slack message:', err);
       setError(err.message || 'Failed to send test Slack message.');
     } finally {
-      setLoading(false); // End loading regardless of success/failure
+      setLoading(false);
+    }
+  };
+
+  // Handler for sending test In-App notification
+  const handleTestInAppMessage = async () => {
+    setMessage('');
+    setError(null);
+    setLoading(true);
+
+    if (!notificationSettings.in_app_alerts_enabled) {
+      setError('In-App Alerts are not enabled. Please enable them first.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Call the new backend endpoint in notification-service
+      const response = await authAxios(`${config.NOTIFICATION_SSE_BASE_URL}/api/notifications/test-in-app`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to trigger test in-app alert with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setMessage(data.message || 'Test in-app alert triggered. Check your screen for the toast!');
+    } catch (err) {
+      console.error('Error triggering test in-app alert:', err);
+      setError(err.message || 'Failed to trigger test in-app alert.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -234,14 +264,14 @@ const UserProfile = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
       <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-md">
-        <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">User Settings</h2> {/* Renamed title */}
+        <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">User Settings</h2>
 
         {loading && <p className="text-center text-blue-500">Loading settings...</p>}
         {error && <p className="text-center text-red-500">{error}</p>}
         {message && <p className="text-center text-green-500">{message}</p>}
 
         {!loading && !error && (
-          <form onSubmit={handleSubmit} className="space-y-8"> {/* Increased spacing between sections */}
+          <form onSubmit={handleSubmit} className="space-y-8">
 
             {/* --- User Profile Section --- */}
             <div className="border-b border-gray-200 pb-6 mb-6">
@@ -315,7 +345,7 @@ const UserProfile = () => {
                   <label htmlFor="slack_webhook_url" className="block text-lg font-medium text-gray-700 mb-2">
                     Slack Webhook URL
                   </label>
-                  <div className="flex items-center gap-2"> 
+                  <div className="flex items-center gap-2">
                     <input
                       type="url"
                       id="slack_webhook_url"
@@ -351,6 +381,20 @@ const UserProfile = () => {
                   className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
                 />
               </div>
+              {/* NEW: Test In-App Alert Button */}
+              {notificationSettings.in_app_alerts_enabled && (
+                <div className="mt-4 text-right">
+                  <button
+                    type="button"
+                    onClick={handleTestInAppMessage}
+                    className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={loading}
+                  >
+                    Test In-App Alert
+                  </button>
+                </div>
+              )}
+
 
               {/* Notification Time Offsets */}
               <div className="mt-4">

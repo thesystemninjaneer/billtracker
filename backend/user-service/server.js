@@ -12,7 +12,7 @@ const jwtSecret = process.env.JWT_SECRET; // Your JWT secret key
 
 // Middleware
 const corsOptions = {
-    origin: 'http://localhost:8080', // Allow your frontend's origin
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173', // Allow your frontend's origin
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allow these HTTP methods
     credentials: true, // Allow cookies to be sent
     optionsSuccessStatus: 204,

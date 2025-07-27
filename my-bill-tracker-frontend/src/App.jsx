@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -8,9 +8,89 @@ import AddBillForm from './pages/AddBillForm.jsx';
 import Register from './pages/Register.jsx';
 import Login from './pages/Login.jsx';
 import NotFound from './pages/NotFound.jsx';
-import UserProfile from './pages/UserProfile'; // handles all settings
+import UserProfile from './pages/UserProfile';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import config from './config'; // Import config for SSE URL
 import './App.css';
+
+// Component to display temporary toast messages
+const Toast = ({ message, type, onClose }) => {
+  const bgColor = type === 'error' ? 'bg-red-500' : 'bg-green-500';
+  const textColor = 'text-white';
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 5000); // Toast disappears after 5 seconds
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg ${bgColor} ${textColor} z-50`}>
+      {message}
+      <button onClick={onClose} className="ml-4 font-bold">X</button>
+    </div>
+  );
+};
+
+// NEW: NotificationListener component for Server-Sent Events
+const NotificationListener = () => {
+  const { isAuthenticated, token: authToken } = useAuth();
+  const [toastMessage, setToastMessage] = useState(null);
+  const [toastType, setToastType] = useState('success'); // 'success' or 'error'
+
+  useEffect(() => {
+    let eventSource;
+
+    if (isAuthenticated && authToken && config.NOTIFICATION_SSE_BASE_URL) {
+      // Pass the JWT token in the query parameter for authentication
+      // Note: EventSource doesn't support custom headers directly, so query param is common.
+      eventSource = new EventSource(`${config.NOTIFICATION_SSE_BASE_URL}/api/notifications/stream?token=${authToken}`);
+
+      eventSource.onopen = () => {
+        console.log('SSE connection opened.');
+      };
+
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log('Received SSE:', data);
+        // Display the in-app alert
+        setToastMessage(data.message);
+        setToastType(data.type === 'error' ? 'error' : 'success'); // Assuming backend sends a 'type'
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('SSE error:', error);
+        setToastMessage('Lost connection to notifications. Please refresh or check backend.');
+        setToastType('error');
+        eventSource.close();
+      };
+    } else if (!isAuthenticated && eventSource) {
+      // Close connection if user logs out
+      eventSource.close();
+    }
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+        console.log('SSE connection closed on component unmount/re-render.');
+      }
+    };
+  }, [isAuthenticated, authToken, config.NOTIFICATION_SSE_BASE_URL]);
+
+  return (
+    <>
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setToastMessage(null)}
+        />
+      )}
+    </>
+  );
+};
+
 
 // ProtectedRoute component to guard routes based on authentication status
 const ProtectedRoute = ({ children }) => {
@@ -99,6 +179,7 @@ function AppContent() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
+      <NotificationListener /> {/* Global Notification Listener */}
     </>
   );
 }

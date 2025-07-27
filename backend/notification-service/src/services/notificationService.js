@@ -1,7 +1,8 @@
 // backend/notification-service/src/services/notificationService.js
 const nodemailer = require('nodemailer');
 const db = require('../db'); // Your MySQL database connection
-const clients = new Set(); // To store connected SSE clients for in-app alerts
+// Use a Map to store connected SSE clients for direct targeting by userId
+const connectedClients = new Map(); // Map to store { userId: ResponseObject }
 
 // --- Email Transporter (Configure with your SMTP details) ---
 const transporter = nodemailer.createTransport({
@@ -97,39 +98,32 @@ async function sendSlackMessage(user, bill, message) {
 // --- In-App Alerts via Server-Sent Events (SSE) ---
 /**
  * Sends an in-app alert via SSE to a specific user's connected clients.
+ * RENAMED from sendInAppAlert to sendSSE for clarity.
  * @param {number} userId - The ID of the user to send the alert to.
- * @param {Object} notificationData - Data for the notification (message, bill_id, in_app_alerts_enabled).
+ * @param {Object} notificationData - Data for the notification (message, bill_id, in_app_alerts_enabled, type).
  */
-function sendInAppAlert(userId, notificationData) {
-    // Check user's preference before sending
-    if (!notificationData.in_app_alerts_enabled) {
+function sendSSE(userId, notificationData) {
+    // Check user's preference before sending, if it's a regular notification (not a test)
+    // For test messages, we send regardless of user setting, as the test is to validate the connection.
+    if (notificationData.type !== 'in-app-test' && !notificationData.in_app_alerts_enabled) {
         console.log(`In-app alerts disabled for user ${userId}`);
         return;
     }
 
-    const payload = JSON.stringify({
-        type: 'newNotification',
-        data: {
-            message: notificationData.message,
-            billId: notificationData.bill_id, // Use bill_id from DB
-            timestamp: new Date().toISOString(),
+    const clientRes = connectedClients.get(userId); // Get the specific client's response object
+    if (clientRes) {
+        try {
+            const payload = JSON.stringify(notificationData); // Send the data as-is
+            clientRes.write(`data: ${payload}\n\n`); // SSE format
+            console.log(`In-app alert sent to user ${userId}: ${notificationData.message || notificationData.text}`);
+        } catch (error) {
+            console.error(`Failed to send SSE to user ${userId}:`, error);
+            // Handle broken pipe or client disconnect: remove from map
+            connectedClients.delete(userId);
         }
-    });
-
-    // Iterate over connected clients and send the event
-    clients.forEach(client => {
-        // Only send to the correct user's connection
-        if (client.userId === userId) {
-            try {
-                client.res.write(`data: ${payload}\n\n`); // SSE format
-                console.log(`In-app alert sent to user ${userId}: ${notificationData.message}`);
-            } catch (error) {
-                console.error(`Failed to send SSE to user ${userId}:`, error);
-                // Handle broken pipe or client disconnect: remove from set
-                clients.delete(client);
-            }
-        }
-    });
+    } else {
+        console.warn(`Attempted to send SSE to disconnected client: ${userId}`);
+    }
 }
 
 // --- SSE Client Management (called from your main app.js/index.js) ---
@@ -143,6 +137,7 @@ function setupSSE(req, res) {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // Important for Nginx/Apache to not buffer events
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8080'); // Explicit CORS for SSE
 
     // Assume req.user is populated by your authentication middleware
     const userId = req.user ? req.user.id : null;
@@ -152,15 +147,18 @@ function setupSSE(req, res) {
         return;
     }
 
-    const client = { id: Date.now(), userId, res };
-    clients.add(client);
-    console.log(`SSE client connected for user ${userId}. Total clients: ${clients.size}`);
+    // Store the response object directly mapped to the userId
+    connectedClients.set(userId, res);
+    console.log(`SSE client connected for user ${userId}. Total clients: ${connectedClients.size}`);
 
-    // Remove client from set when connection closes
+    // Remove client from map when connection closes
     req.on('close', () => {
         console.log(`SSE client disconnected for user ${userId}.`);
-        clients.delete(client);
+        connectedClients.delete(userId);
     });
+
+    // Send a welcome message (optional)
+    sendSSE(userId, { type: 'connection_established', message: 'Connected to BillTracker notifications.' });
 }
 
 // --- Notification Logging (Optional but Recommended) ---
@@ -173,9 +171,6 @@ function setupSSE(req, res) {
  */
 async function logNotification(userId, billId, type, messageContent) {
     try {
-        // MySQL uses `?` for placeholders.
-        // `ON DUPLICATE KEY UPDATE id = id` is a common MySQL idiom to do nothing on conflict
-        // when a UNIQUE KEY constraint is violated (based on the unique_notification_per_day key).
         await db.query(
             `INSERT INTO notification_logs (user_id, bill_id, notification_type, message_content, sent_at)
              VALUES (?, ?, ?, ?, NOW())
@@ -196,22 +191,41 @@ async function logNotification(userId, billId, type, messageContent) {
  * @returns {Promise<boolean>} - True if a notification has been sent, false otherwise.
  */
 async function hasNotificationBeenSent(userId, billId, notificationType, dueDate) {
-    // MySQL DATE() function extracts the date part from a DATETIME/TIMESTAMP
     const result = await db.query(
         `SELECT COUNT(*) FROM notification_logs
          WHERE user_id = ? AND bill_id = ? AND notification_type = ? AND DATE(sent_at) = DATE(?)`,
         [userId, billId, notificationType, dueDate]
     );
-    // MySQL returns column names as they are, or sometimes as 'COUNT(*)' for aggregate functions
     return parseInt(result.rows[0]['COUNT(*)']) > 0;
+}
+
+// --- Scheduler (placeholder - your actual scheduler logic would be here) ---
+// This function would typically query for upcoming bills and call sendEmailNotification, sendSlackMessage, sendSSE
+function startNotificationScheduler() {
+    console.log("Notification scheduler started. (Actual scheduling logic not fully implemented here)");
+    // Example: Periodically check for bills due soon and send notifications
+    // setInterval(async () => {
+    //     const [users] = await db.query('SELECT id, email, slack_webhook_url, is_email_notification_enabled, is_slack_notification_enabled, notification_time_offsets FROM users');
+    //     for (const user of users) {
+    //         const [bills] = await db.query('SELECT id, name, amount, due_date FROM bills WHERE user_id = ? AND due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ? DAY)', [user.id, user.notification_time_offsets]);
+    //         for (const bill of bills) {
+    //             // Determine if notification should be sent based on offsets and if already sent
+    //             // sendEmailNotification(user, bill, "Your bill is due soon!");
+    //             // sendSlackMessage(user, bill, "Your bill is due soon!");
+    //             // sendSSE(user.id, { type: 'bill_due', message: `Your bill ${bill.name} is due soon!`, billId: bill.id });
+    //         }
+    //     }
+    // }, 24 * 60 * 60 * 1000); // Run once every 24 hours
 }
 
 
 module.exports = {
     sendEmailNotification,
     sendSlackMessage,
-    sendInAppAlert,
+    sendSSE, // Export the renamed function
     setupSSE,
     logNotification,
     hasNotificationBeenSent,
+    connectedClients, // Export the connectedClients Map
+    startNotificationScheduler
 };
