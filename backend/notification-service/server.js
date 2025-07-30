@@ -11,7 +11,8 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 const jwtSecret = process.env.JWT_SECRET;
-const allowedOrigins =  process.env.ALLOWED_ORIGIN;
+//const allowedOrigins =  process.env.ALLOWED_ORIGIN;
+const allowedOrigins = [process.env.FRONTEND_URL, process.env.ALLOWED_ORIGIN].filter(Boolean); // Filter out undefined values
 
 // --- Middleware (CORS Configuration) ---
 const corsOptions = {

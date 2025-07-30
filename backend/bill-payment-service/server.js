@@ -9,7 +9,8 @@ const axios = require('axios');
 const app = express();
 const port = process.env.SERVICE_PORT || 3002;
 const jwtSecret = process.env.JWT_SECRET;
-const allowedOrigins = process.env.ALLOWED_ORIGIN;
+//const allowedOrigins = process.env.ALLOWED_ORIGIN;
+const allowedOrigins = [process.env.FRONTEND_URL, process.env.ALLOWED_ORIGIN].filter(Boolean); // Filter out undefined values
 
 // Middleware
 const corsOptions = {
