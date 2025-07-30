@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { useNotification } from '../context/NotificationContext'; // NEW: Import useNotification
+import { useNotification } from '../context/NotificationContext'; // Import useNotification
 import config from '../config';
 
 const UserProfile = () => {
   const { token: authToken, isAuthenticated, loading: authLoading, authAxios, user: authContextUser, setUser: setAuthContextUser } = useContext(AuthContext);
-  const { setToastMessage, setToastType } = useNotification(); // NEW: Get toast setters from NotificationContext
+  const { addNotification } = useNotification(); // NEW: Get addNotification from NotificationContext
 
   // State for User Profile
   const [userProfile, setUserProfile] = useState({
@@ -197,13 +197,11 @@ const UserProfile = () => {
       }
 
       const data = await response.json();
-      // Use setToastMessage and setToastType from NotificationContext
-      setToastMessage(data.message || 'Test in-app alert triggered. Check your screen for the toast!');
-      setToastType('success'); // Assuming success for test trigger
+      // Use addNotification from NotificationContext
+      addNotification(data.message || 'Test in-app alert triggered. Check your screen for the toast!', 'success');
     } catch (err) {
       console.error('Error triggering test in-app alert:', err);
-      setToastMessage(err.message || 'Failed to trigger test in-app alert.'); // Show error in toast
-      setToastType('error'); // Set toast type to error
+      addNotification(err.message || 'Failed to trigger test in-app alert.', 'error'); // Show error in toast
       setError(err.message || 'Failed to trigger test in-app alert.'); // Also keep local error state
     } finally {
       setLoading(false);

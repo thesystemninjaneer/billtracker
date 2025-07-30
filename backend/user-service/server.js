@@ -9,10 +9,18 @@ const jwt = require('jsonwebtoken'); // For JWT token generation
 const app = express();
 const port = process.env.SERVICE_PORT || 3000;
 const jwtSecret = process.env.JWT_SECRET; // Your JWT secret key
+//const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
+const allowedOrigins =  process.env.ALLOWED_ORIGIN;
 
 // Middleware
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173', // Allow your frontend's origin
+    origin: function (origin, callback) {
+        if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allow these HTTP methods
     credentials: true, // Allow cookies to be sent
     optionsSuccessStatus: 204,

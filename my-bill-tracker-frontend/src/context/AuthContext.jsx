@@ -1,15 +1,17 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../config';
+import { useNotification } from './NotificationContext'; // NEW: Import useNotification
 
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(!!token); // Keep as state for clarity
+  const [isAuthenticated, setIsAuthenticated] = useState(!!token);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
+  const { clearAllNotifications } = useNotification(); // NEW: Get clearAllNotifications from NotificationContext
 
   // Logout function (defined early for use in authAxios and useEffect)
   const logout = useCallback(() => {
@@ -17,8 +19,9 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('token');
-    navigate('/login'); // Redirect to login page on logout
-  }, [navigate]);
+    clearAllNotifications(); // NEW: Clear all notifications on logout
+    navigate('/login');
+  }, [navigate, clearAllNotifications]); // Add clearAllNotifications to dependency array
 
   // Custom fetch wrapper that includes the Authorization header
   const authAxios = useCallback(async (url, options = {}) => {
@@ -33,23 +36,21 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const response = await fetch(url, { ...options, headers });
-      // If the token is expired or invalid, log out the user
       if (response.status === 401 || response.status === 403) {
         console.error('Authentication failed or token expired. Logging out.');
-        logout(); // Call logout function
+        logout();
       }
       return response;
     } catch (error) {
       console.error('Network or fetch error:', error);
-      throw error; // Re-throw to be caught by calling component
+      throw error;
     }
-  }, [token, logout]); // Depend on token and logout
+  }, [token, logout]);
 
   useEffect(() => {
     const verifyToken = async () => {
       if (token) {
         try {
-          // Attempt to fetch profile to verify token validity
           const response = await authAxios(`${config.USER_API_BASE_URL}/profile`, { method: 'GET' });
 
           if (response.ok) {
@@ -58,22 +59,21 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(true);
           } else {
             console.error("Token verification failed or expired.");
-            logout(); // Log out if token is invalid or expired
+            logout();
           }
         } catch (error) {
           console.error("Error verifying token:", error);
           logout();
         }
       } else {
-        setIsAuthenticated(false); // No token, so not authenticated
+        setIsAuthenticated(false);
       }
       setLoading(false);
     };
 
     verifyToken();
-  }, [token, logout, authAxios]); // Re-run if token or authAxios/logout changes
+  }, [token, logout, authAxios]);
 
-  // Login function
   const login = async (username, password) => {
     try {
       const response = await fetch(`${config.USER_API_BASE_URL}/login`, {
@@ -91,8 +91,8 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', data.token);
       setToken(data.token);
       setUser(data.user);
-      setIsAuthenticated(true); // Set authenticated on successful login
-      navigate('/'); // Redirect to dashboard on successful login
+      setIsAuthenticated(true);
+      navigate('/');
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
@@ -118,8 +118,8 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', data.token);
       setToken(data.token);
       setUser(data.user);
-      setIsAuthenticated(true); // Set authenticated on successful registration
-      navigate('/'); // Redirect to dashboard on successful registration
+      setIsAuthenticated(true);
+      navigate('/');
       return { success: true };
     } catch (error) {
       console.error('Registration error:', error);
@@ -132,12 +132,12 @@ export const AuthProvider = ({ children }) => {
     setToken,
     user,
     setUser,
-    isAuthenticated, // Use the state variable
+    isAuthenticated,
     loading,
     authAxios,
     logout,
-    login, // Expose login function
-    register, // Expose register function
+    login,
+    register,
   };
 
   return (
@@ -147,7 +147,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Custom hook to use the AuthContext
 export const useAuth = () => {
   return useContext(AuthContext);
 };

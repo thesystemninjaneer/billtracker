@@ -9,10 +9,17 @@ const axios = require('axios');
 const app = express();
 const port = process.env.SERVICE_PORT || 3002;
 const jwtSecret = process.env.JWT_SECRET;
+const allowedOrigins = process.env.ALLOWED_ORIGIN;
 
 // Middleware
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173', // 'http://localhost:8080', // Allow requests from the frontend
+    origin: function (origin, callback) {
+        if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allow these HTTP methods
     credentials: true, // Allow cookies to be sent
     optionsSuccessStatus: 204,

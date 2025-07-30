@@ -137,7 +137,6 @@ function setupSSE(req, res) {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // Important for Nginx/Apache to not buffer events
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8080'); // Explicit CORS for SSE
 
     // Assume req.user is populated by your authentication middleware
     const userId = req.user ? req.user.id : null;

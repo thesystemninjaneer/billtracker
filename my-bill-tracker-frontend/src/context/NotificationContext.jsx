@@ -5,14 +5,45 @@ export const NotificationContext = createContext(null);
 
 // Notification Provider component
 export const NotificationProvider = ({ children }) => {
-  const [toastMessage, setToastMessage] = useState(null);
-  const [toastType, setToastType] = useState('success'); // 'success' or 'error'
+  // State to hold an array of notification objects
+  // Each object will have { id: string, message: string, type: 'success' | 'error' }
+  const [notifications, setNotifications] = useState([]);
+
+  /**
+   * Adds a new notification to the stack.
+   * @param {string} message - The message content for the notification.
+   * @param {'success' | 'error'} type - The type of notification (for styling).
+   */
+  const addNotification = (message, type = 'success') => {
+    const id = Date.now().toString(); // Simple unique ID for each notification
+    setNotifications((prevNotifications) => [
+      ...prevNotifications,
+      { id, message, type },
+    ]);
+  };
+
+  /**
+   * Removes a notification from the stack by its ID.
+   * @param {string} id - The unique ID of the notification to remove.
+   */
+  const removeNotification = (id) => {
+    setNotifications((prevNotifications) =>
+      prevNotifications.filter((notification) => notification.id !== id)
+    );
+  };
+
+  /**
+   * Clears all active notifications.
+   */
+  const clearAllNotifications = () => {
+    setNotifications([]);
+  };
 
   const contextValue = {
-    toastMessage,
-    setToastMessage,
-    toastType,
-    setToastType,
+    notifications,
+    addNotification,
+    removeNotification,
+    clearAllNotifications, // Expose function to clear all notifications
   };
 
   return (
