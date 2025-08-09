@@ -13,6 +13,8 @@ An app for tracking personal monthly bill payments such as power, water, and cab
   - dashboard display of recently paid bills
 - Automated alerts
   - email notification including summary of upcoming bills due with link back to record paid details
+  - in-app pop up notification as bills become due soon
+  - slack message including summary of upcoming bills due
 - Database back end
   - records bill organization details and their payment entries
   - records user details and profile configuration
