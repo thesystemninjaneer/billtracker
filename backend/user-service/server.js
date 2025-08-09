@@ -177,7 +177,8 @@ app.get('/profile', authenticateToken, async (req, res) => {
   // req.user contains the payload from the JWT (e.g., { id: 1, username: 'testuser' })
   try {
     const [users] = await pool.execute(
-      'SELECT id, username, email, profile_config, created_at FROM users WHERE id = ?',
+      // UPDATED: Removed 'profile_config' column as it no longer exists
+      'SELECT id, username, email, created_at FROM users WHERE id = ?',
       [req.user.id]
     );
 
@@ -192,7 +193,6 @@ app.get('/profile', authenticateToken, async (req, res) => {
         id: userProfile.id,
         username: userProfile.username,
         email: userProfile.email,
-        profileConfig: userProfile.profile_config,
         createdAt: userProfile.created_at
       }
     });
@@ -204,14 +204,15 @@ app.get('/profile', authenticateToken, async (req, res) => {
 
 /**
  * @route PUT /api/users/me/profile
- * @desc Update authenticated user's email
+ * @desc Update authenticated user's email (username update removed)
  * @access Private (requires JWT)
  */
 app.put('/api/users/me/profile', authenticateToken, async (req, res) => {
+  // Removed 'username' from destructuring, as it will no longer be updated here
   const { email } = req.body;
   const userId = req.user.id; // Get user ID from authenticated token
 
-  if (!email) {
+  if (!email) { // Only email is now expected for update
     return res.status(400).json({ message: 'Email is required for profile update.' });
   }
 

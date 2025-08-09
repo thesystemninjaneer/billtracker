@@ -100,7 +100,8 @@ services:
       DB_PORT: 3306
       SERVICE_PORT: 3003
       JWT_SECRET: your_jwt_secret_key_very_long_and_random # Match this!
-      FRONTEND_URL: http://localhost:3003
+      FRONTEND_URL: http://localhost:8080
+      ALLOWED_ORIGIN: http://localhost:5173
       EMAIL_SERVICE_HOST: smtp.sendgrid.net
       EMAIL_SERVICE_PORT: 587
       EMAIL_SERVICE_SECURE: false # true for port 465 (SSL), false for 587 (TLS)

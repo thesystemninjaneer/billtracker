@@ -10,15 +10,29 @@ First, a MySQL database is needed for data persistence. These instructions use d
 
 To manually connect to the database using a mysql client and setup the schema/tables, do the following.
 ```
-$ docker exec -ti bill-tracker-mysql bash
-bash-5.1# mysql -u bill_user -p
+docker exec -ti bill-tracker-mysql bash
+mysql -u bill_user --password=your_db_password bill_tracker_db
 Enter password:
-use bill_tracker_db;
 SHOW TABLES;
 ```
 When prompted, paste in the database password (default: `your_db_password`). After logged in, paste in the contents of [db-init.sql](db-init.sql) to perform the one time initialization of the databases app required tables. 
 
 Continue on to manually run and test the service locally. This is handy when your development/contributing work needs validated.
+
+Some additional helpful maintenace related commands:
+
+To override a users existing pw hash run this command
+```
+UPDATE users SET password_hash = 'REDACTED' where id = 1;
+```
+where
+- "password_hash" is the name of the column in the "users" table to override
+- "1" is the "id" number of the first user record in the "users" table to override
+
+delete all users
+```
+delete from users;
+```
 
 ## Run the db service
 
@@ -26,7 +40,6 @@ Example command to run the services:
 ```
 ./billtracker$ docker compose -f my-bill-tracker/docker-compose.yaml up --build -d
 ```
-
 
 ### mysql schema for users
 

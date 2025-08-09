@@ -97,6 +97,7 @@ The base URL for your User Service will be http://localhost:3000.
     DATA="
     { \"username\": \"$USER\", \"email\": \"$EMAIL\", \"password\": \"$PW\" }"
     curl http://localhost:3000/login -X POST -d "$DATA" -H 'Content-Type: application/json'
+    #####
     {"message":"Logged in successfully","token":"xxxxxxxxxxxxxxxxxxxxxxxxx","user":{"id":1,"username":"testuser"}
     ```
 - Get User Profile (GET - Protected Route):
