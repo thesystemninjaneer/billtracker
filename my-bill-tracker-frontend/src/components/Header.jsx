@@ -1,3 +1,4 @@
+// my-bill-tracker-frontend/src/components/Header.jsx
 //3. A simple navigation header to move between sections.
 import React from 'react';
 import { Link } from 'react-router-dom';
