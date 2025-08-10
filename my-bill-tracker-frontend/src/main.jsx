@@ -1,3 +1,4 @@
+// my-bill-tracker-frontend/src/main.jsx
 //1. This file is the entry point for your React app, setting up React Strict Mode and the router.
 import React from 'react';
 import ReactDOM from 'react-dom/client';
