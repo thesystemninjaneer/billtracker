@@ -125,6 +125,12 @@ services:
         condition: service_healthy
       organization-service:
         condition: service_started
+      user-service:
+        condition: service_started
+      bill-payment-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
 
 volumes:
   db_data:
