@@ -1,5 +1,6 @@
+/* my-bill-tracker-frontend/src/pages/Forms.css */
 .form-container {
-  background-color: white;
+  background-color: var(--header-bg);
   padding: 30px;
   border-radius: 8px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);

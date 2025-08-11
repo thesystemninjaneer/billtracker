@@ -1,3 +1,32 @@
+/* my-bill-tracker-frontend/src/index.css */
+:root {
+  /* Light Theme Variables */
+  --background-primary: #f4f7f6;
+  --text-primary: #333;
+  --text-secondary: #555;
+  --header-bg: var(--header-bg)fff;
+  --header-border: #e0e0e0;
+  --link-color: #007bff;
+  --link-hover-color: #0056b3;
+  --button-primary-bg: #007bff;
+  --button-primary-text: var(--header-bg)fff;
+}
+
+body[data-theme='dark'] {
+  /* Dark Theme Variables */
+  --background-primary: #1a1a1a;
+  --text-primary: #f0f0f0;
+  --text-secondary: #cccccc;
+  --header-bg: #242424;
+  --header-border: #333333;
+  --link-color: #64b5f6;
+  --link-hover-color: #90caf9;
+  --button-primary-bg: #64b5f6;
+  --button-primary-text: #1a1a1a;
+}
+
+/* --- Global Styles --- */
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -5,11 +34,33 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f4f7f6; /* Light background */
-  color: #333;
+  
+  /* Use CSS variables for colors */
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+
+  /* Add a transition for smooth color changes */
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* A basic style for the theme toggle button we will add */
+.theme-toggle-btn {
+  background: none;
+  border: 1px solid var(--text-secondary);
+  color: var(--text-primary);
+  border-radius: 20px;
+  cursor: pointer;
+  padding: 6px 10px;
+  font-size: 1.2rem; /* Larger emoji */
+  line-height: 1;
+  margin-left: 1rem;
+}
+
+.theme-toggle-btn:hover {
+  background-color: var(--header-border);
 }
