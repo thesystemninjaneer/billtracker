@@ -1,29 +1,58 @@
 /* my-bill-tracker-frontend/src/index.css */
+/* my-bill-tracker-frontend/src/index.css */
 :root {
   /* Light Theme Variables */
   --background-primary: #f4f7f6;
+  --background-secondary: #ffffff; /* For cards and containers */
   --text-primary: #333;
   --text-secondary: #555;
-  --header-bg: var(--header-bg)fff;
+  --text-title: #2c3e50; /* A strong color for titles */
+  --header-bg: #ffffff;
   --header-border: #e0e0e0;
+  --border-color: #e0e0e0; /* A general purpose border color */
   --link-color: #007bff;
   --link-hover-color: #0056b3;
   --button-primary-bg: #007bff;
-  --button-primary-text: var(--header-bg)fff;
-}
+  --button-primary-text: #ffffff;
+ --card-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+
+  /* NEW: Variables for forms and messages */
+  --accent-color: #61dafb;
+  --accent-glow: 0 0 0 2px rgba(97, 218, 251, 0.2);
+  --input-bg: #ffffff;
+  --button-accent-text: #282c34;
+  --danger-color: #e74c3c;
+  --danger-text: #ffffff;
+  --error-bg: #fcebeb;
+  --info-bg: #e8f5fd;}
 
 body[data-theme='dark'] {
   /* Dark Theme Variables */
   --background-primary: #1a1a1a;
+  --background-secondary: #242424; /* For cards and containers */
   --text-primary: #f0f0f0;
   --text-secondary: #cccccc;
+  --text-title: #ffffff; /* A bright white for titles */
   --header-bg: #242424;
   --header-border: #333333;
+  --border-color: #444444; /* A general purpose border color */
   --link-color: #64b5f6;
   --link-hover-color: #90caf9;
   --button-primary-bg: #64b5f6;
   --button-primary-text: #1a1a1a;
+  --card-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+
+  /* NEW: Dark theme values for forms and messages */
+  --accent-color: #61dafb; /* This blue looks good on dark backgrounds too */
+  --accent-glow: 0 0 0 2px rgba(97, 218, 251, 0.2);
+  --input-bg: #2c2c2c; /* A dark background for inputs */
+  --button-accent-text: #282c34; /* Dark text still works on the light blue button */
+  --danger-color: #e74c3c;
+  --danger-text: #ffffff;
+  --error-bg: rgba(231, 76, 60, 0.2); /* A translucent red for dark backgrounds */
+  --info-bg: rgba(52, 152, 219, 0.2); /* A translucent blue for dark backgrounds */
 }
+
 
 /* --- Global Styles --- */
 

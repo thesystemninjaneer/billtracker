@@ -3,14 +3,14 @@
   padding: 20px;
   max-width: 900px;
   margin: 20px auto;
-  background-color: var(--header-bg);
+  background-color: var(--background-secondary); /* CHANGE: Use variable */
   border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--card-shadow); /* CHANGE: Use variable */
 }
 
 .dashboard-container h2 {
   text-align: center;
-  color: #282c34;
+  color: var(--text-title); /* FIX: Use title color variable */
   margin-bottom: 30px;
 }
 
@@ -19,126 +19,8 @@
 }
 
 .dashboard-section h3 {
-  color: #282c34;
-  border-bottom: 2px solid #eee;
-  padding-bottom: 10px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.dashboard-section ul {
-  list-style: none;
-  padding: 0;
-}
-
-.dashboard-section li {
-  background-color: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 5px;
-  padding: 15px;
-  margin-bottom: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap; /* Allow wrapping on smaller screens */
-}
-
-.bill-item .bill-org {
-  font-weight: bold;
-  color: #34495e;
-  flex-basis: 30%; /* Take up some space */
-  min-width: 150px; /* Ensure it's not too small */
-}
-
-.bill-item .confirmation-code {
-  font-style: italic;
-  color: #666;
-  font-size: 0.9em;
-}
-
-.dashboard-section .record-link {
-  background-color: #2ecc71; /* Green for record */
-  color: white;
-  padding: 8px 15px;
-  border-radius: 5px;
-  text-decoration: none;
-  font-size: 0.9em;
-  transition: background-color 0.3s ease;
-  margin-left: 10px; /* Space from other text */
-}
-
-.dashboard-section .record-link:hover {
-  background-color: #27ae60;
-}
-
-.paid-item {
-  background-color: #e8f8f5; /* Lighter green background for paid items */
-  border-color: #d1f2eb;
-}
-
-.dashboard-section .bill-item {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px; /* Space between items */
-}
-
-.bill-item .item-actions {
-  display: flex;
-  gap: 8px; /* Space between action links */
-  margin-top: 5px; /* Space from other text on smaller screens */
-  flex-wrap: wrap;
-}
-
-.action-link {
-  padding: 6px 10px;
-  border-radius: 4px;
-  text-decoration: none;
-  font-size: 0.85em;
-  transition: background-color 0.3s ease;
-  white-space: nowrap; /* Prevent wrapping within link */
-}
-
-.action-link.website-link {
-  background-color: #3498db; /* Blue */
-  color: white;
-}
-
-.action-link.website-link:hover {
-  background-color: #2980b9;
-}
-
-.action-link.edit-link {
-  background-color: #f39c12; /* Orange */
-  color: white;
-}
-
-.action-link.edit-link:hover {
-  background-color: #e67e22;
-}
-
-/* Ensure original record-link style is still present or defined */
-.dashboard-section .record-link {
-  background-color: #2ecc71; /* Green for record */
-  color: white;
-  padding: 8px 15px;
-  border-radius: 5px;
-  text-decoration: none;
-  font-size: 0.9em;
-  transition: background-color 0.3s ease;
-  margin-left: 10px;
-}
-
-.dashboard-section .record-link:hover {
-  background-color: #27ae60;
-}
-
-.dashboard-section h3 {
-  color: #34495e;
-  border-bottom: 2px solid #ecf0f1;
+  color: var(--text-title); /* FIX: Use title color variable */
+  border-bottom: 2px solid var(--border-color); /* CHANGE: Use variable */
   padding-bottom: 10px;
   margin-bottom: 20px;
   display: flex;
@@ -152,8 +34,8 @@
 }
 
 .dashboard-section .bill-item {
-  background-color: #fdfdfd;
-  border: 1px solid #e0e0e0;
+  background-color: var(--background-primary); /* CHANGE: Use variable */
+  border: 1px solid var(--border-color); /* CHANGE: Use variable */
   border-left: 5px solid #3498db; /* Default border color */
   padding: 15px 20px;
   margin-bottom: 10px;
@@ -172,6 +54,7 @@
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
+/* Specific item colors - these could also become variables if desired */
 .dashboard-section .bill-item.upcoming-item {
   border-left-color: #f39c12; /* Orange for upcoming */
 }
@@ -183,32 +66,56 @@
 
 .bill-item .bill-org {
   font-weight: bold;
-  color: #2c3e50;
+  color: var(--text-title); /* CHANGE: Use variable for emphasis */
   font-size: 1.1em;
 }
 
 .bill-item .bill-name {
-    color: #555;
+    color: var(--text-secondary); /* CHANGE: Use variable */
     font-style: italic;
 }
 
 .bill-item .due-date,
 .bill-item .paid-date {
-  color: #7f8c8d;
+  color: var(--text-secondary); /* CHANGE: Use variable */
   font-size: 0.9em;
   margin-left: 5px;
 }
 
 .bill-item .confirmation-code {
-  background-color: #ecf0f1;
+  background-color: var(--background-primary); /* CHANGE: Use variable */
   padding: 3px 8px;
   border-radius: 4px;
   font-size: 0.8em;
-  color: #555;
+  color: var(--text-secondary); /* CHANGE: Use variable */
   margin-left: 10px;
 }
 
-/* Responsive adjustments for bill-item */
+/* Action link colors are kept for now as they are brand/status colors, not theme colors */
+.action-link {
+  padding: 6px 10px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 0.85em;
+  transition: background-color 0.3s ease;
+  white-space: nowrap;
+  color: white; /* Most action buttons have white text */
+}
+
+.action-link.website-link { background-color: #3498db; }
+.action-link.website-link:hover { background-color: #2980b9; }
+.action-link.edit-link { background-color: #f39c12; }
+.action-link.edit-link:hover { background-color: #e67e22; }
+.dashboard-section .record-link { background-color: #2ecc71; }
+.dashboard-section .record-link:hover { background-color: #27ae60; }
+
+.item-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 5px;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 768px) {
   .dashboard-section .bill-item {
     flex-direction: column;
