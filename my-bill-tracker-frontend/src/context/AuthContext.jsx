@@ -1,3 +1,4 @@
+// my-bill-tracker-frontend/src/context/AuthContext.jsx
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../config';

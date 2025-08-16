@@ -23,6 +23,6 @@ An app for tracking personal monthly bill payments such as power, water, and cab
   - get and list upcoming bills due
   - add and delete paid bill details to include date paid, payment confirmation code, and amount paid
 
-![dashboard](images/dashboard.PNG)
+![dashboard](images/dashboard.png)
 
 For more implementation details see the README.md in each directory starting with the [frontend microservice](my-bill-tracker-frontend/README.md).

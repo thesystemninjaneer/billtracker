@@ -1,3 +1,4 @@
+// my-bill-tracker-frontend/src/context/NotificationContext.jsx
 import React, { createContext, useState, useContext } from 'react';
 
 // Create a new context for notifications

@@ -1,3 +1,4 @@
+// backend/notification-service/server.js
 // --- main app file for notification service ---
 // This file sets up the Express server for background tasks like scheduling
 // and Server-Sent Events (SSE). It no longer handles notification settings APIs.

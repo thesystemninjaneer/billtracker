@@ -1,11 +1,14 @@
+// my-bill-tracker-frontend/src/components/Header.jsx
 //3. A simple navigation header to move between sections.
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext'; // 1. Import useTheme
 import './Header.css';
 
 function Header() {
   const { isAuthenticated, logout, user } = useAuth();
+  const { theme, toggleTheme } = useTheme(); // 2. Get theme state and toggle function
 
   return (
     <header className="header">
@@ -28,6 +31,10 @@ function Header() {
               <Link to="/register">Register</Link>
             </>
           )}
+          {/* 3. Add the theme toggle button */}
+          <button onClick={toggleTheme} className="theme-toggle-btn" title="Toggle theme">
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
         </div>
       </nav>
     </header>
