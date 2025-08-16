@@ -1,5 +1,4 @@
 /* my-bill-tracker-frontend/src/index.css */
-/* my-bill-tracker-frontend/src/index.css */
 :root {
   /* Light Theme Variables */
   --background-primary: #f4f7f6;
@@ -14,9 +13,7 @@
   --link-hover-color: #0056b3;
   --button-primary-bg: #007bff;
   --button-primary-text: #ffffff;
- --card-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-
-  /* NEW: Variables for forms and messages */
+  --card-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   --accent-color: #61dafb;
   --accent-glow: 0 0 0 2px rgba(97, 218, 251, 0.2);
   --input-bg: #ffffff;
@@ -41,8 +38,6 @@ body[data-theme='dark'] {
   --button-primary-bg: #64b5f6;
   --button-primary-text: #1a1a1a;
   --card-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-
-  /* NEW: Dark theme values for forms and messages */
   --accent-color: #61dafb; /* This blue looks good on dark backgrounds too */
   --accent-glow: 0 0 0 2px rgba(97, 218, 251, 0.2);
   --input-bg: #2c2c2c; /* A dark background for inputs */

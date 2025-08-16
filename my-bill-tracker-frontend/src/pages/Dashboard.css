@@ -3,14 +3,14 @@
   padding: 20px;
   max-width: 900px;
   margin: 20px auto;
-  background-color: var(--background-secondary); /* CHANGE: Use variable */
+  background-color: var(--background-secondary);
   border-radius: 8px;
-  box-shadow: var(--card-shadow); /* CHANGE: Use variable */
+  box-shadow: var(--card-shadow);
 }
 
 .dashboard-container h2 {
   text-align: center;
-  color: var(--text-title); /* FIX: Use title color variable */
+  color: var(--text-title);
   margin-bottom: 30px;
 }
 
@@ -19,8 +19,8 @@
 }
 
 .dashboard-section h3 {
-  color: var(--text-title); /* FIX: Use title color variable */
-  border-bottom: 2px solid var(--border-color); /* CHANGE: Use variable */
+  color: var(--text-title);
+  border-bottom: 2px solid var(--border-color);
   padding-bottom: 10px;
   margin-bottom: 20px;
   display: flex;
@@ -34,8 +34,8 @@
 }
 
 .dashboard-section .bill-item {
-  background-color: var(--background-primary); /* CHANGE: Use variable */
-  border: 1px solid var(--border-color); /* CHANGE: Use variable */
+  background-color: var(--background-primary);
+  border: 1px solid var(--border-color);
   border-left: 5px solid #3498db; /* Default border color */
   padding: 15px 20px;
   margin-bottom: 10px;
@@ -66,28 +66,28 @@
 
 .bill-item .bill-org {
   font-weight: bold;
-  color: var(--text-title); /* CHANGE: Use variable for emphasis */
+  color: var(--text-title);
   font-size: 1.1em;
 }
 
 .bill-item .bill-name {
-    color: var(--text-secondary); /* CHANGE: Use variable */
+    color: var(--text-secondary);
     font-style: italic;
 }
 
 .bill-item .due-date,
 .bill-item .paid-date {
-  color: var(--text-secondary); /* CHANGE: Use variable */
+  color: var(--text-secondary);
   font-size: 0.9em;
   margin-left: 5px;
 }
 
 .bill-item .confirmation-code {
-  background-color: var(--background-primary); /* CHANGE: Use variable */
+  background-color: var(--background-primary); 
   padding: 3px 8px;
   border-radius: 4px;
   font-size: 0.8em;
-  color: var(--text-secondary); /* CHANGE: Use variable */
+  color: var(--text-secondary);
   margin-left: 10px;
 }
 

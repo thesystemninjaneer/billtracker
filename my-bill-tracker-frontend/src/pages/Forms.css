@@ -1,15 +1,15 @@
 /* my-bill-tracker-frontend/src/pages/Forms.css */
 .form-container {
-  background-color: var(--background-secondary); /* CHANGE */
+  background-color: var(--background-secondary);
   padding: 30px;
   border-radius: 8px;
-  box-shadow: var(--card-shadow); /* CHANGE */
+  box-shadow: var(--card-shadow);
   margin-top: 30px;
 }
 
 .form-container h2 {
   text-align: center;
-  color: var(--text-title); /* CHANGE */
+  color: var(--text-title);
   margin-bottom: 25px;
 }
 
@@ -21,7 +21,7 @@
   display: block;
   margin-bottom: 8px;
   font-weight: bold;
-  color: var(--text-secondary); /* CHANGE */
+  color: var(--text-secondary);
 }
 
 .form-group input,
@@ -29,21 +29,21 @@
 .form-group textarea {
   width: 100%;
   padding: 10px;
-  border: 1px solid var(--border-color); /* CHANGE */
+  border: 1px solid var(--border-color);
   border-radius: 5px;
   font-size: 1em;
   box-sizing: border-box;
-  background-color: var(--input-bg); /* ADDED */
-  color: var(--text-primary); /* ADDED */
+  background-color: var(--input-bg);
+  color: var(--text-primary);
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
-  border-color: var(--accent-color); /* CHANGE */
+  border-color: var(--accent-color);
   outline: none;
-  box-shadow: var(--accent-glow); /* CHANGE */
+  box-shadow: var(--accent-glow);
 }
 
 .form-actions {
@@ -64,8 +64,8 @@
 }
 
 .btn-primary {
-  background-color: var(--accent-color); /* CHANGE */
-  color: var(--button-accent-text); /* CHANGE */
+  background-color: var(--accent-color);
+  color: var(--button-accent-text);
 }
 
 .btn-primary:hover {
@@ -74,8 +74,8 @@
 }
 
 .btn-danger {
-  background-color: var(--danger-color); /* CHANGE */
-  color: var(--danger-text); /* CHANGE */
+  background-color: var(--danger-color);
+  color: var(--danger-text);
 }
 
 .btn-danger:hover {
@@ -84,9 +84,9 @@
 }
 
 .error-message {
-  color: var(--danger-color); /* CHANGE */
-  background-color: var(--error-bg); /* CHANGE */
-  border: 1px solid var(--danger-color); /* CHANGE */
+  color: var(--danger-color);
+  background-color: var(--error-bg);
+  border: 1px solid var(--danger-color);
   padding: 10px;
   border-radius: 5px;
   margin-bottom: 20px;
@@ -94,9 +94,9 @@
 }
 
 .info-message {
-  color: var(--link-color); /* CHANGE */
-  background-color: var(--info-bg); /* CHANGE */
-  border: 1px solid var(--link-color); /* CHANGE */
+  color: var(--link-color);
+  background-color: var(--info-bg);
+  border: 1px solid var(--link-color);
   padding: 10px;
   border-radius: 5px;
   margin-bottom: 20px;
@@ -106,6 +106,6 @@
 .preselected-info {
   margin-top: 5px;
   font-size: 0.9em;
-  color: var(--text-secondary); /* CHANGE */
+  color: var(--text-secondary);
   font-style: italic;
 }
