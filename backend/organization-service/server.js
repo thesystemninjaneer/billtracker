@@ -3,7 +3,7 @@ require('dotenv').config();
 
 const express = require('express');
 const mysql = require('mysql2/promise');
-const cors = require('cors');
+// const cors = require('cors');
 const jwt = require('jsonwebtoken'); // Import jsonwebtoken
 
 const app = express();
@@ -11,7 +11,7 @@ const port = process.env.SERVICE_PORT || 3001;
 const jwtSecret = process.env.JWT_SECRET; // Get JWT secret from env
 
 // Middleware
-app.use(cors());
+// app.use(cors());
 app.use(express.json());
 
 // Database connection pool (same as before)

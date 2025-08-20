@@ -2,7 +2,7 @@ require('dotenv').config(); // Load environment variables from .env
 
 const express = require('express');
 const mysql = require('mysql2/promise');
-const cors = require('cors');
+// const cors = require('cors');
 const bcrypt = require('bcryptjs'); // For password hashing
 const jwt = require('jsonwebtoken'); // For JWT token generation
 
@@ -13,20 +13,20 @@ const jwtSecret = process.env.JWT_SECRET; // Your JWT secret key
 const allowedOrigins = [process.env.FRONTEND_URL, process.env.ALLOWED_ORIGIN].filter(Boolean); // Filter out undefined values
 
 // Middleware
-const corsOptions = {
-    origin: function (origin, callback) {
-        if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allow these HTTP methods
-    credentials: true, // Allow cookies to be sent
-    optionsSuccessStatus: 204,
-    allowedHeaders: ['Content-Type', 'Authorization'] // Explicitly allow Authorization header
-};
-app.use(cors(corsOptions)); // Enable CORS with specific options
+// const corsOptions = {
+//     origin: function (origin, callback) {
+//         if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+//             callback(null, true);
+//         } else {
+//             callback(new Error('Not allowed by CORS'));
+//         }
+//     },
+//     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allow these HTTP methods
+//     credentials: true, // Allow cookies to be sent
+//     optionsSuccessStatus: 204,
+//     allowedHeaders: ['Content-Type', 'Authorization'] // Explicitly allow Authorization header
+// };
+// app.use(cors(corsOptions)); // Enable CORS with specific options
 app.use(express.json()); // For parsing application/json
 
 // Database connection pool
