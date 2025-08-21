@@ -1,3 +1,4 @@
+// my-bill-tracker-frontend/src/pages/UserProfile.jsx
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext'; // Import useNotification
