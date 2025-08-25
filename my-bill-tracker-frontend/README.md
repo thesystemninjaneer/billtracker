@@ -425,14 +425,15 @@ Continue reading for additional details on the refinement.
 
 Here is the order to follow when building and testing individual services during local development.
 
-1. [backend db](../backend/db/README.md)
-2. [backend user-service](../backend/user-service/README.md)
+1. [backend api-gateway (Node.js and Express)](wip)
+2. [backend db](../backend/db/README.md)
+3. [backend user-service](../backend/user-service/README.md)
    ![settings](../images/settings.png)
-3. [backend organization-service](../backend/organization-service/README.md)
+4. [backend organization-service](../backend/organization-service/README.md)
    ![add-org](../images/add-org.png)
-4. [backend bill-payment-service](../backend/bill-payment-service/README.md)
+5. [backend bill-payment-service](../backend/bill-payment-service/README.md)
    ![add-bill](../images/add-bill.png)
    ![rcd-pymnt](../images/record-payment.png)
-5. [frontend](../my-bill-tracker-frontend/README.md) (this page)
+6. [frontend](../my-bill-tracker-frontend/README.md) (this page)
 
 Or go back to the [main README](../README.md). 
