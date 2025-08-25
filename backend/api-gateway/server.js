@@ -58,6 +58,11 @@ app.use(['/api/payments', '/api/bills'], createProxyMiddleware({
     pathRewrite: { '^/api': '' },
 }));
 
+app.use(['/api/notifications/test-slack'], createProxyMiddleware({
+    target: BILL_PAYMENT_SERVICE_URL,
+    changeOrigin: true,
+}));
+
 // 5. Notification Service
 app.use('/api/notifications', createProxyMiddleware({
     target: NOTIFICATION_SERVICE_URL,
