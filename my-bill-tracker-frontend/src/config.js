@@ -8,7 +8,6 @@ const config = {
   USER_API_BASE_URL: `${API_GATEWAY_BASE_URL}/users`,
   ORGANIZATION_API_BASE_URL: `${API_GATEWAY_BASE_URL}/organizations`,
   BILL_PAYMENT_API_BASE_URL: API_GATEWAY_BASE_URL,
-  // FIX: Make this the base gateway URL. The specific path will be added in the component.
   NOTIFICATION_SSE_BASE_URL: API_GATEWAY_BASE_URL, 
 };
 

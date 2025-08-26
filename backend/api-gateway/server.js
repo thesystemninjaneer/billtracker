@@ -1,3 +1,5 @@
+// backend/api-gateway/server.js
+require('dotenv').config();
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const morgan = require('morgan');
@@ -6,19 +8,20 @@ const cors = require('cors');
 const app = express();
 
 // --- CORS Configuration ---
-const allowedOrigins = [
-  'http://localhost:8080',
-  'http://localhost:5173'
-];
+const allowedOrigins = [process.env.FRONTEND_URL, process.env.ALLOWED_ORIGIN].filter(Boolean); // Filter out undefined values
+
 const corsOptions = {
     origin: function (origin, callback) {
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
         }
     },
-    credentials: true,
+//    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allow these HTTP methods
+    credentials: true, // Allow cookies to be sent
+//    optionsSuccessStatus: 204,
+//    allowedHeaders: ['Content-Type', 'Authorization'] // Explicitly allow Authorization header
 };
 app.use(cors(corsOptions));
 app.use(morgan('dev'));
