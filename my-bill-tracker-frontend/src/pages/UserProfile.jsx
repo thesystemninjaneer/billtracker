@@ -47,7 +47,6 @@ const UserProfile = () => {
         });
 
         // --- Fetch Notification Settings ---
-        // FIX: Corrected URL construction. Removed duplicated '/api/users'.
         const notificationSettingsResponse = await authAxios(`${config.USER_API_BASE_URL}/me/notifications`);
 
         if (!notificationSettingsResponse.ok) {
@@ -119,7 +118,6 @@ const UserProfile = () => {
     }
     setLoading(true);
     try {
-      // FIX: Corrected URL construction. Removed duplicated '/api'.
       const response = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/notifications/test-slack`, { method: 'POST' });
 
       if (!response.ok) {

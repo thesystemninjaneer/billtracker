@@ -63,7 +63,7 @@ useEffect(() => {
 
     // Only establish SSE connection if authenticated
     if (isAuthenticated && authToken && config.NOTIFICATION_SSE_BASE_URL) {
-      // FIX: Construct the full path from the gateway base URL
+      // Construct the full path from the gateway base URL
       const streamUrl = `${config.NOTIFICATION_SSE_BASE_URL}/notifications/stream?token=${authToken}`;
 
       eventSource = new EventSource(streamUrl)
