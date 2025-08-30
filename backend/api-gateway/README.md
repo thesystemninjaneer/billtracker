@@ -68,3 +68,5 @@ The gateway uses a set of rules to forward requests. The order of these rules is
 - http-proxy-middleware: The core library that enables the reverse proxy functionality.
 - cors: Manages the CORS pre-flight requests and headers.
 - morgan: Provides development-friendly request logging to the console.
+
+To setup the next most relevant service, follow the [db README.md](../db/README.md).

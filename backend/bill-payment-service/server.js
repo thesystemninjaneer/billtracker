@@ -10,7 +10,6 @@ const app = express();
 const port = process.env.SERVICE_PORT || 3002;
 const jwtSecret = process.env.JWT_SECRET;
 
-//app.use(cors(corsOptions));
 app.use(express.json());
 
 // Database connection pool

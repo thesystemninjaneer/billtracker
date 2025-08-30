@@ -23,13 +23,16 @@ Microservices Breakdown
    - Handles automated email alerts.
    - Triggers notifications based on upcoming bill due dates.
    - Generates email content with summaries and links.
+5. API Gateway
+   - a reverse proxy
+   - handles all frontend calls to backend services
 
 ## Data Flow and Communication
 
 Microservices and monolithic service oriented architecture outline.
 
-- Frontend (React App) communicates with the backend services primarily through their respective REST APIs.
-- Backend Services communicate with each other via internal API interservice communication (e.g., HTTP/REST or a message broker). For example, the Notification Service will query the Bill Payment Service to get upcoming bill details.
+- Frontend (React App) communicates with the backend service REST APIs indirectly through the API Gateway service.
+- Backend Services use the API Gateway to communicate with each other via internal API interservice communication (e.g., HTTP/REST or a message broker). For example, the Notification Service will query the Bill Payment Service to get upcoming bill details.
 - MySQL Database will be the persistent storage for all services. Each service will ideally have its own dedicated database schema or database instance for true microservices isolation, though a shared database with separate tables is also an option for simplicity initially.
 
 ## Technical Stack
@@ -39,8 +42,8 @@ Microservices and monolithic service oriented architecture outline.
 - Database: MySQL for relational data storage.
 - Containerization: Docker for packaging each microservice and the React app.
 - Orchestration: Docker Compose for local development, and Kubernetes for production deployment and scaling.
-- API Gateway (Optional but Recommended): For routing external requests to the correct microservice and handling cross-cutting concerns like authentication.
-- Message Broker (Optional but Recommended for Notifications): RabbitMQ or Kafka could be used by the Notification Service to process email queues asynchronously.
+- API Gateway: For routing external requests to the correct microservice and handling cross-cutting concerns like authentication.
+- Message Broker (FUTURE TODO): RabbitMQ or Kafka could be used by the Notification Service to process email queues asynchronously.
 
 ## Key Features and Implementation Details
 
@@ -425,7 +428,7 @@ Continue reading for additional details on the refinement.
 
 Here is the order to follow when building and testing individual services during local development.
 
-1. [backend api-gateway (Node.js and Express)](wip)
+1. [backend api-gateway (Node.js and Express)](../backend/api-gateway/README.md)
 2. [backend db](../backend/db/README.md)
 3. [backend user-service](../backend/user-service/README.md)
    ![settings](../images/settings.png)
