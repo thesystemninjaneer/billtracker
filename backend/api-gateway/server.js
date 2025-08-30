@@ -8,21 +8,23 @@ const cors = require('cors');
 const app = express();
 
 // --- CORS Configuration ---
-const allowedOrigins = [process.env.FRONTEND_URL, process.env.ALLOWED_ORIGIN].filter(Boolean); // Filter out undefined values
 
+// Read from an environment variable. The `||` provides a fallback for local development.
+const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:8080,http://localhost:5173').split(',');
+
+// robust function-based origin check.
+// This explicitly handles requests with no origin (like server-to-server, Postman)
 const corsOptions = {
     origin: function (origin, callback) {
-        if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
         }
     },
-//    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allow these HTTP methods
-    credentials: true, // Allow cookies to be sent
-//    optionsSuccessStatus: 204,
-//    allowedHeaders: ['Content-Type', 'Authorization'] // Explicitly allow Authorization header
+    credentials: true,
 };
+
 app.use(cors(corsOptions));
 app.use(morgan('dev'));
 
@@ -71,7 +73,6 @@ app.use('/api/notifications', createProxyMiddleware({
     target: NOTIFICATION_SERVICE_URL,
     changeOrigin: true,
     onProxyRes: (proxyRes, req, res) => {
-        // FIX: Use the correct response object 'res' to set headers for the client.
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');

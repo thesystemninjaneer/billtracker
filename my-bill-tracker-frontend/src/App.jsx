@@ -192,7 +192,7 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      {/* CORRECTED ORDER: NotificationProvider wraps AuthProvider */}
+      {/* NotificationProvider wraps AuthProvider */}
       <NotificationProvider>
         <AuthProvider>
           <div className="app-container">

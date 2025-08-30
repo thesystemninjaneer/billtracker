@@ -146,7 +146,6 @@ const UserProfile = () => {
     }
     setLoading(true);
     try {
-      // FIX: Corrected URL construction. Removed duplicated '/api'.
       const response = await authAxios(`${config.NOTIFICATION_SSE_BASE_URL}/notifications/test-in-app`, { method: 'POST' });
 
       if (!response.ok) {
@@ -177,7 +176,6 @@ const UserProfile = () => {
     }
     try {
       // --- Update User Profile ---
-      // FIX: Corrected URL construction. Removed duplicated '/api/users'.
       const profileResponse = await authAxios(`${config.USER_API_BASE_URL}/me/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -192,7 +190,6 @@ const UserProfile = () => {
       }
 
       // --- Update Notification Settings ---
-      // FIX: Corrected URL construction. Removed duplicated '/api/users'.
       const notificationsResponse = await authAxios(`${config.USER_API_BASE_URL}/me/notifications`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

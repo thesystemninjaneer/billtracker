@@ -1,3 +1,4 @@
+-- backend/db/db-init.sql
 -- Use the database specified in docker-compose.yml
 -- CREATE DATABASE IF NOT EXISTS bill_tracker_db;
 USE bill_tracker_db;

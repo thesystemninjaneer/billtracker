@@ -1,3 +1,4 @@
+// backend/bill-payment-service/server.js
 require('dotenv').config();
 
 const express = require('express');
