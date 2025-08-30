@@ -2,7 +2,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../config';
-import { useNotification } from './NotificationContext'; // NEW: Import useNotification
+import { useNotification } from './NotificationContext'; // Import useNotification
 
 export const AuthContext = createContext(null);
 
@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(!!token);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { clearAllNotifications } = useNotification(); // NEW: Get clearAllNotifications from NotificationContext
+  const { clearAllNotifications } = useNotification(); // Get clearAllNotifications from NotificationContext
 
   // Logout function (defined early for use in authAxios and useEffect)
   const logout = useCallback(() => {
@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('token');
-    clearAllNotifications(); // NEW: Clear all notifications on logout
+    clearAllNotifications(); // Clear all notifications on logout
     navigate('/login');
   }, [navigate, clearAllNotifications]); // Add clearAllNotifications to dependency array
 

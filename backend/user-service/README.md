@@ -7,7 +7,6 @@ This uses a Node.js Express application for the User Service. The following assu
 - express: Web framework.
 - mysql2: MySQL client for Node.js.
 - dotenv: For loading environment variables.
-- cors: For handling Cross-Origin Resource Sharing.
 - bcryptjs: For hashing passwords securely.
 - jsonwebtoken: For creating and verifying JWTs.
 

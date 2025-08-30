@@ -13,7 +13,7 @@ docker compose -f my-bill-tracker/docker-compose.yaml up --build -d
 
 2. Access
 
-Browse to http://localhost:8080
+Browse to http://localhost:8080 or change the CORS_ALLOWED_ORIGINS & API_GATEWAY_URL to the container host IP when remotely developing. Otherwise, set them to the Apps FQDN when deploying a production version.
 
 3. Test
 

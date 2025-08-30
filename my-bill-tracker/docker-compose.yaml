@@ -1,3 +1,4 @@
+# my-bill-tracker/docker-compose.yaml
 version: '3.8'
 
 services:
@@ -23,13 +24,28 @@ services:
       retries: 10
     restart: always
 
+  api-gateway:
+    build:
+      context: ../backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: bill-tracker-api-gateway
+    ports:
+      - "5000:5000"
+    environment:
+      - CORS_ALLOWED_ORIGINS=http://192.168.1.100:8080
+    depends_on:
+      - user-service
+      - organization-service
+      - bill-payment-service
+      - notification-service
+    restart: always
+
   user-service:
     build:
       context: ../backend/user-service
       dockerfile: Dockerfile
     container_name: bill-tracker-user-service
-    ports:
-      - "3000:3000"
+    # ports: - "3000:3000" 
     environment:
       DB_HOST: db
       DB_USER: bill_user
@@ -37,8 +53,7 @@ services:
       DB_NAME: bill_tracker_db
       DB_PORT: 3306
       SERVICE_PORT: 3000
-      JWT_SECRET: your_jwt_secret_key_very_long_and_random # Match this!
-    depends_on:
+      JWT_SECRET: your_jwt_secret_key_very_long_and_random
       db:
         condition: service_healthy
     restart: always
@@ -48,8 +63,7 @@ services:
       context: ../backend/organization-service
       dockerfile: Dockerfile
     container_name: bill-tracker-organization-service
-    ports:
-      - "3001:3001"
+    # ports: - "3001:3001"
     environment:
       DB_HOST: db
       DB_USER: bill_user
@@ -57,7 +71,7 @@ services:
       DB_NAME: bill_tracker_db
       DB_PORT: 3306
       SERVICE_PORT: 3001
-      JWT_SECRET: your_jwt_secret_key_very_long_and_random # Match this!
+      JWT_SECRET: your_jwt_secret_key_very_long_and_random
     depends_on:
       db:
         condition: service_healthy
@@ -65,11 +79,10 @@ services:
 
   bill-payment-service:
     build:
-      context: ../backend/bill-payment-service # Path to your Dockerfile for this service
+      context: ../backend/bill-payment-service
       dockerfile: Dockerfile
     container_name: bill-tracker-bill-payment-service
-    ports:
-      - "3002:3002" # Map service port to host port
+    # ports: - "3002:3002" 
     environment:
       DB_HOST: db
       DB_USER: bill_user
@@ -77,11 +90,11 @@ services:
       DB_NAME: bill_tracker_db
       DB_PORT: 3306
       SERVICE_PORT: 3002
-      JWT_SECRET: your_jwt_secret_key_very_long_and_random # ⚠️ Add this line, match User Service's secret!
+      JWT_SECRET: your_jwt_secret_key_very_long_and_random
     depends_on:
       db:
         condition: service_healthy
-      organization-service: # Also depends on organization service for linking bills to orgs
+      organization-service:
         condition: service_started
     restart: always
 
@@ -90,8 +103,7 @@ services:
       context: ../backend/notification-service
       dockerfile: Dockerfile
     container_name: bill-tracker-notification-service
-    ports:
-      - "3003:3003"
+    # ports: - "3003:3003"
     environment:
       DB_HOST: db
       DB_USER: bill_user
@@ -99,12 +111,12 @@ services:
       DB_NAME: bill_tracker_db
       DB_PORT: 3306
       SERVICE_PORT: 3003
-      JWT_SECRET: your_jwt_secret_key_very_long_and_random # Match this!
+      JWT_SECRET: your_jwt_secret_key_very_long_and_random
       FRONTEND_URL: http://localhost:8080
       ALLOWED_ORIGIN: http://localhost:5173
       EMAIL_SERVICE_HOST: smtp.sendgrid.net
       EMAIL_SERVICE_PORT: 587
-      EMAIL_SERVICE_SECURE: false # true for port 465 (SSL), false for 587 (TLS)
+      EMAIL_SERVICE_SECURE: false
       EMAIL_SERVICE_USER: apikey
       EMAIL_SERVICE_PASS: YOUR_SENDGRID_API_KEY
       EMAIL_FROM_ADDRESS: no-reply@yourdomain.com
@@ -120,17 +132,11 @@ services:
     container_name: bill-tracker-frontend
     ports:
       - "8080:80"
+    environment:
+      # This is the variable that will be injected into the frontend at runtime.
+      - API_GATEWAY_URL=http://192.168.1.100:5000
     depends_on:
-      db:
-        condition: service_healthy
-      organization-service:
-        condition: service_started
-      user-service:
-        condition: service_started
-      bill-payment-service:
-        condition: service_started
-      notification-service:
-        condition: service_started
+      - api-gateway # Frontend now depends on the gateway
 
 volumes:
   db_data:

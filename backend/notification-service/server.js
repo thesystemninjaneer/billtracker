@@ -7,31 +7,12 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const { startNotificationScheduler, setupSSE, sendSSE, connectedClients } = require('./src/services/notificationService');
-const cors = require('cors');
 const jwt = require('jsonwebtoken');
 
 const app = express();
 const jwtSecret = process.env.JWT_SECRET;
-//const allowedOrigins =  process.env.ALLOWED_ORIGIN;
 const allowedOrigins = [process.env.FRONTEND_URL, process.env.ALLOWED_ORIGIN].filter(Boolean); // Filter out undefined values
 
-// --- Middleware (CORS Configuration) ---
-const corsOptions = {
-    origin: function (origin, callback) {
-        if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-    optionsSuccessStatus: 204,
-    allowedHeaders: ['Content-Type', 'Authorization']
-};
-app.use(cors(corsOptions)); // Apply this middleware
-// ADDED FOR DEBUGGING: Log the configured CORS origin
-console.log(`Notification Service: CORS configured to allow origin: ${corsOptions.origin}`);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -71,7 +52,7 @@ app.get('/api/notifications/stream', authenticateToken, (req, res) => {
     setupSSE(req, res); // This function is from notificationService
 });
 
-// NEW: API Endpoint to send a test In-App notification
+// API Endpoint to send a test In-App notification
 /**
  * @route POST /api/notifications/test-in-app
  * @desc Send a test in-app notification to the authenticated user's connected clients.

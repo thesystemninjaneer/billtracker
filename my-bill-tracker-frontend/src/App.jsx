@@ -58,12 +58,15 @@ const NotificationListener = () => {
   const { isAuthenticated, token: authToken } = useAuth();
   const { addNotification } = useNotification(); // Get addNotification from NotificationContext
 
-  useEffect(() => {
+useEffect(() => {
     let eventSource;
 
     // Only establish SSE connection if authenticated
     if (isAuthenticated && authToken && config.NOTIFICATION_SSE_BASE_URL) {
-      eventSource = new EventSource(`${config.NOTIFICATION_SSE_BASE_URL}/api/notifications/stream?token=${authToken}`);
+      // Construct the full path from the gateway base URL
+      const streamUrl = `${config.NOTIFICATION_SSE_BASE_URL}/notifications/stream?token=${authToken}`;
+
+      eventSource = new EventSource(streamUrl)
 
       eventSource.onopen = () => {
         console.log('SSE connection opened.');
@@ -189,7 +192,7 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      {/* CORRECTED ORDER: NotificationProvider wraps AuthProvider */}
+      {/* NotificationProvider wraps AuthProvider */}
       <NotificationProvider>
         <AuthProvider>
           <div className="app-container">

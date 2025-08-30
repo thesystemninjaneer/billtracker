@@ -1,32 +1,16 @@
+// backend/user-service/server.js
 require('dotenv').config(); // Load environment variables from .env
 
 const express = require('express');
 const mysql = require('mysql2/promise');
-const cors = require('cors');
 const bcrypt = require('bcryptjs'); // For password hashing
 const jwt = require('jsonwebtoken'); // For JWT token generation
 
 const app = express();
 const port = process.env.SERVICE_PORT || 3000;
 const jwtSecret = process.env.JWT_SECRET; // Your JWT secret key
-//const allowedOrigins =  process.env.ALLOWED_ORIGIN;
 const allowedOrigins = [process.env.FRONTEND_URL, process.env.ALLOWED_ORIGIN].filter(Boolean); // Filter out undefined values
 
-// Middleware
-const corsOptions = {
-    origin: function (origin, callback) {
-        if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allow these HTTP methods
-    credentials: true, // Allow cookies to be sent
-    optionsSuccessStatus: 204,
-    allowedHeaders: ['Content-Type', 'Authorization'] // Explicitly allow Authorization header
-};
-app.use(cors(corsOptions)); // Enable CORS with specific options
 app.use(express.json()); // For parsing application/json
 
 // Database connection pool
@@ -208,11 +192,10 @@ app.get('/profile', authenticateToken, async (req, res) => {
  * @access Private (requires JWT)
  */
 app.put('/api/users/me/profile', authenticateToken, async (req, res) => {
-  // Removed 'username' from destructuring, as it will no longer be updated here
   const { email } = req.body;
   const userId = req.user.id; // Get user ID from authenticated token
 
-  if (!email) { // Only email is now expected for update
+  if (!email) { // Only email is expected for update
     return res.status(400).json({ message: 'Email is required for profile update.' });
   }
 
