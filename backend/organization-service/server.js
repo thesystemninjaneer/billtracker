@@ -114,6 +114,99 @@ app.get('/organizations', async (req, res) => {
 });
 
 /**
+ * @route GET /organizations/export
+ * @desc Export all organizations for the authenticated user as a JSON file.
+ * @access Private (requires JWT)
+ */
+app.get('/organizations/export', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    try {
+        const [organizations] = await pool.execute(
+            'SELECT name, account_number, website, typical_due_day FROM organizations WHERE user_id = ?',
+            [userId]
+        );
+        res.status(200).json(organizations);
+    } catch (error) {
+        console.error('Error exporting organizations:', error);
+        res.status(500).json({ message: 'Server error during export.' });
+    }
+});
+
+/**
+ * @route POST /organizations/import
+ * @desc Import a list of organizations from a JSON upload for the authenticated user, skipping any duplicates by name.
+ * @access Private (requires JWT)
+ */
+app.post('/organizations/import', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const organizationsToImport = req.body;
+
+    if (!Array.isArray(organizationsToImport) || organizationsToImport.length === 0) {
+        return res.status(400).json({ message: 'Request body must be a non-empty array of organizations.' });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        let importedCount = 0;
+        let skippedNames = [];
+
+        // First, get all existing organization names for this user in one query for efficiency.
+        const [existingRows] = await connection.execute(
+            'SELECT name FROM organizations WHERE user_id = ?',
+            [userId]
+        );
+        const existingNames = new Set(existingRows.map(org => org.name.toLowerCase()));
+
+        for (const org of organizationsToImport) {
+            // Basic validation for each object
+            if (!org.name) {
+                throw new Error(`Invalid organization object found without a 'name' property.`);
+            }
+
+            // Check for duplicates (case-insensitive)
+            if (existingNames.has(org.name.toLowerCase())) {
+                skippedNames.push(org.name);
+                continue; // Skip to the next organization
+            }
+
+            // If not a duplicate, insert it
+            await connection.execute(
+                'INSERT INTO organizations (user_id, name, account_number, website, typical_due_day) VALUES (?, ?, ?, ?, ?)',
+                [
+                    userId,
+                    org.name,
+                    org.account_number || null,
+                    org.website || null,
+                    org.typical_due_day || null
+                ]
+            );
+            importedCount++;
+            // Add the newly imported name to our set to prevent duplicates within the same file
+            existingNames.add(org.name.toLowerCase());
+        }
+
+        await connection.commit();
+
+        // Build the final success message for the user
+        let finalMessage = `Successfully imported ${importedCount} new organizations.`;
+        if (skippedNames.length > 0) {
+            finalMessage += ` Skipped ${skippedNames.length} duplicates: ${skippedNames.join(', ')}.`;
+        }
+
+        res.status(201).json({ message: finalMessage });
+
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error importing organizations:', error);
+        res.status(500).json({ message: 'Failed to import organizations. The entire operation was rolled back.', error: error.message });
+    } finally {
+        connection.release();
+    }
+});
+
+/**
  * @route GET /organizations/:id
  * @desc Get a single billing organization by ID
  * @access Private (requires JWT)
