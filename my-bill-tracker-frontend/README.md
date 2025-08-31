@@ -197,7 +197,7 @@ The `./src/config.js` configuration file manages the API endpoint.
 
 This interacts with the Organization Service to add, update, and delete organizations.
 
-The `./src/pages/Forms.css` provieds a simple error message style.
+The `./src/pages/Forms.css` provides a simple error message style.
 
 3. List orgs
 
