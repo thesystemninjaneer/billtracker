@@ -1,5 +1,5 @@
 // my-bill-tracker-frontend/src/pages/UserProfile.jsx
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import config from '../config';
@@ -7,6 +7,7 @@ import config from '../config';
 const UserProfile = () => {
   const { token: authToken, isAuthenticated, loading: authLoading, authAxios, user: authContextUser, setUser: setAuthContextUser } = useContext(AuthContext);
   const { addNotification } = useNotification();
+  const fileInputRef = useRef(null); // Rref for the hidden file input
 
   // State for User Profile
   const [userProfile, setUserProfile] = useState({
@@ -74,6 +75,97 @@ const UserProfile = () => {
 
     fetchData();
   }, [authToken, authLoading, authAxios]);
+
+  // Handler for triggering the Export ---
+  const handleExportOrganizations = async () => {
+    setLoading(true);
+    addNotification('Preparing your export...', 'info');
+    try {
+      const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}/export`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch organizations for export.');
+      }
+      
+      const organizations = await response.json();
+      
+      if (organizations.length === 0) {
+        addNotification('You have no organizations to export.', 'info');
+        return;
+      }
+      
+      // Create a blob from the JSON data and trigger a download
+      const jsonString = JSON.stringify(organizations, null, 2); // Pretty print the JSON
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bill-tracker-organizations.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      addNotification('Organizations exported successfully!', 'success');
+
+    } catch (err) {
+      console.error('Error exporting organizations:', err);
+      addNotification(err.message || 'An error occurred during export.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Handler for the hidden file input's change event ---
+  const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) {
+      return; // User cancelled the dialog
+    }
+
+    setLoading(true);
+    addNotification('Importing file...', 'info');
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const organizations = JSON.parse(e.target.result);
+        
+        const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}/import`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(organizations),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to import organizations.');
+        }
+
+        const data = await response.json();
+        addNotification(data.message, 'success');
+        
+        // Optionally, you could trigger a refresh of the dashboard data here
+        
+      } catch (err) {
+        console.error('Error processing or importing file:', err);
+        addNotification(err.message || 'File is not valid JSON or an API error occurred.', 'error');
+      } finally {
+        setLoading(false);
+        // Reset file input value to allow re-uploading the same file
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    };
+    
+    reader.onerror = () => {
+      addNotification('Failed to read the selected file.', 'error');
+      setLoading(false);
+    };
+
+    reader.readAsText(file);
+  };
 
   // Handler for User Profile changes
   const handleProfileChange = (e) => {
@@ -207,7 +299,7 @@ const UserProfile = () => {
     }
   };
 
-  // Render logic remains the same...
+  // Render logic
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
       <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-md">
@@ -216,7 +308,6 @@ const UserProfile = () => {
         {loading && <p className="text-center text-blue-500">Loading settings...</p>}
         {error && <p className="text-center text-red-500">{error}</p>}
         {message && <p className="text-center text-green-500">{message}</p>}
-
         {!loading && !error && (
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* --- User Profile Section --- */}
@@ -356,6 +447,41 @@ const UserProfile = () => {
                 </div>
               </div>
             </div>
+            {/* --- Organization Settings Section --- */}
+            <div className="border-t border-gray-200 pt-6 mt-6">
+              <h3 className="text-2xl font-semibold text-gray-700 mb-4">Organization Settings</h3>
+              <p className="text-gray-600 mb-4">
+                Export your current list of organizations to a JSON file, or import a previously exported file to add organizations in bulk.
+              </p>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={handleExportOrganizations}
+                  disabled={loading}
+                  className="flex-1 text-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  Export Organizations
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current.click()} // Trigger the hidden file input
+                  disabled={loading}
+                  className="flex-1 text-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+                >
+                  Import Organizations
+                </button>
+                {/* Hidden file input for the import dialog */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept=".json"
+                  style={{ display: 'none' }}
+                />
+              </div>
+            </div>
+
+            {/* Submit Button for all settings */}
             <button
               type="submit"
               className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
