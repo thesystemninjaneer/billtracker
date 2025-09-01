@@ -32,7 +32,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - CORS_ALLOWED_ORIGINS=http://192.168.1.100:8080
+      - CORS_ALLOWED_ORIGINS=http://10.11.11.59:8080
     depends_on:
       - user-service
       - organization-service
@@ -134,7 +134,7 @@ services:
       - "8080:80"
     environment:
       # This is the variable that will be injected into the frontend at runtime.
-      - API_GATEWAY_URL=http://192.168.1.100:5000
+      - API_GATEWAY_URL=http://10.11.11.59:5000
     depends_on:
       - api-gateway # Frontend now depends on the gateway
 

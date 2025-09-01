@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <g fill="#374151">
+    <title>Bill Tracker Logo - Checked Bill</title>
+    <!-- Main document shape -->
+    <path d="M20,10 H80 C85.5,10 90,14.5 90,20 V80 C90,85.5 85.5,90 80,90 H20 C14.5,90 10,85.5 10,80 V20 C10,14.5 14.5,10 20,10 Z" />
+    
+    <!-- Stylized lines to suggest text/data -->
+    <rect x="25" y="30" width="50" height="6" rx="3" fill="rgba(255,255,255,0.2)" />
+    <rect x="25" y="42" width="50" height="6" rx="3" fill="rgba(255,255,255,0.2)" />
+    <rect x="25" y="54" width="30" height="6" rx="3" fill="rgba(255,255,255,0.2)" />
+
+    <!-- Checkmark Circle -->
+    <circle cx="50" cy="65" r="28" fill="#FFFFFF" />
+    
+    <!-- Checkmark Path -->
+    <path fill="#374151" d="M42.2,76.1c-0.8,0-1.6-0.3-2.2-0.9L29.1,64.3c-1.2-1.2-1.2-3.1,0-4.2c1.2-1.2,3.1-1.2,4.2,0l8.9,8.9l24.4-24.4c1.2-1.2,3.1-1.2,4.2,0c1.2,1.2,1.2,3.1,0,4.2L44.4,75.2C43.8,75.8,43,76.1,42.2,76.1z" />
+  </g>
+</svg>

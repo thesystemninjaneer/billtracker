@@ -101,6 +101,106 @@ const calculateNextDueDate = (dueDay, frequency) => {
     return nextDueDate;
 };
 
+/**
+ * @route GET /payments/export
+ * @desc Export payment history for a specific organization or all organizations.
+ * @access Private (requires JWT)
+ */
+app.get('/payments/export', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const { organizationId } = req.query; // e.g., '5' or 'all'
+
+    try {
+        let query = `
+            SELECT o.name as organizationName, b.bill_name as billName, p.amount_paid, p.date_paid, p.confirmation_code, p.notes
+            FROM payments p
+            JOIN organizations o ON p.organization_id = o.id
+            LEFT JOIN bills b ON p.bill_id = b.id
+            WHERE p.user_id = ?
+        `;
+        const queryParams = [userId];
+
+        if (organizationId && organizationId !== 'all') {
+            query += ' AND p.organization_id = ?';
+            queryParams.push(organizationId);
+        }
+        
+        query += ' ORDER BY o.name, p.date_paid DESC';
+
+        const [payments] = await pool.execute(query, queryParams);
+        
+        const exportData = payments.map(p => ({
+            organizationName: p.organizationName,
+            billName: p.billName || null,
+            amountPaid: p.amount_paid,
+            datePaid: p.date_paid,
+            confirmationCode: p.confirmation_code || null,
+            notes: p.notes || null
+        }));
+
+        res.status(200).json(exportData);
+    } catch (error) {
+        console.error('Error exporting payment records:', error);
+        res.status(500).json({ message: 'Server error during export.' });
+    }
+});
+
+/**
+ * @route POST /payments/import
+ * @desc Import payment history from a JSON file.
+ * @access Private (requires JWT)
+ */
+app.post('/payments/import', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const paymentsToImport = req.body;
+
+    if (!Array.isArray(paymentsToImport) || paymentsToImport.length === 0) {
+        return res.status(400).json({ message: 'Request body must be a non-empty array of payment records.' });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        
+        let importedCount = 0;
+
+        for (const p of paymentsToImport) {
+            if (!p.organizationName || !p.amountPaid || !p.datePaid) {
+                throw new Error('Each payment record must include organizationName, amountPaid, and datePaid.');
+            }
+
+            const [orgRows] = await connection.execute('SELECT id FROM organizations WHERE user_id = ? AND name = ?', [userId, p.organizationName]);
+            if (orgRows.length === 0) {
+                throw new Error(`Organization not found for name: "${p.organizationName}". Please add it first or correct the name.`);
+            }
+            const organizationId = orgRows[0].id;
+
+            let billId = null;
+            if (p.billName) {
+                const [billRows] = await connection.execute('SELECT id FROM bills WHERE user_id = ? AND organization_id = ? AND bill_name = ?', [userId, organizationId, p.billName]);
+                if (billRows.length > 0) {
+                    billId = billRows[0].id;
+                }
+            }
+
+            await connection.execute(
+                'INSERT INTO payments (user_id, organization_id, bill_id, amount_paid, date_paid, confirmation_code, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [userId, organizationId, billId, p.amountPaid, p.datePaid, p.paymentConfirmationCode || null, p.notes || null]
+            );
+            importedCount++;
+        }
+
+        await connection.commit();
+        res.status(201).json({ message: `Successfully imported ${importedCount} payment records.` });
+
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error importing payment records:', error);
+        res.status(500).json({ message: 'Failed to import payment records. The entire operation was rolled back.', error: error.message });
+    } finally {
+        connection.release();
+    }
+});
 
 /**
  * @route POST /bills
@@ -397,7 +497,6 @@ app.get('/payments/recently-paid', async (req, res) => {
         res.status(500).json({ message: 'Server error fetching recently paid payments.' });
     }
 });
-
 
 /**
  * @route GET /payments/:id
