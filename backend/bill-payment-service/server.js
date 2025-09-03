@@ -112,7 +112,16 @@ app.get('/payments/export', authenticateToken, async (req, res) => {
 
     try {
         let query = `
-            SELECT o.name as organizationName, b.bill_name as billName, p.amount_paid, p.date_paid, p.confirmation_code, p.notes
+            SELECT 
+                o.name as organizationName, 
+                b.bill_name as billName, 
+                p.amount_paid, 
+                p.date_paid, 
+                p.confirmation_code, 
+                p.notes, 
+                p.due_date, 
+                p.amount_due,
+                p.payment_status
             FROM payments p
             JOIN organizations o ON p.organization_id = o.id
             LEFT JOIN bills b ON p.bill_id = b.id
@@ -134,6 +143,9 @@ app.get('/payments/export', authenticateToken, async (req, res) => {
             billName: p.billName || null,
             amountPaid: p.amount_paid,
             datePaid: p.date_paid,
+            dueDate: p.due_date,
+            amountDue: p.amount_due,
+            paymentStatus: p.payment_status,
             confirmationCode: p.confirmation_code || null,
             notes: p.notes || null
         }));
@@ -164,9 +176,20 @@ app.post('/payments/import', authenticateToken, async (req, res) => {
         
         let importedCount = 0;
 
-        for (const p of paymentsToImport) {
-            if (!p.organizationName || !p.amountPaid || !p.datePaid) {
-                throw new Error('Each payment record must include organizationName, amountPaid, and datePaid.');
+        // Loop with index for better error reporting
+        for (const [index, p] of paymentsToImport.entries()) {
+            // FIX: Implement detailed, specific validation for each required field.
+            if (!p.organizationName) {
+                throw new Error(`Record at index ${index} is missing the required 'organizationName' field.`);
+            }
+            if (p.amountPaid == null) { // `== null` checks for both null and undefined
+                throw new Error(`Payment record for "${p.organizationName}" (index ${index}) is missing the required 'amountPaid' field.`);
+            }
+            if (!p.datePaid) {
+                throw new Error(`Payment record for "${p.organizationName}" (index ${index}) is missing the required 'datePaid' field.`);
+            }
+            if (p.amountDue == null) { // `== null` checks for both null and undefined
+                throw new Error(`Payment record for "${p.organizationName}" (index ${index}) is missing the required 'amountDue' field.`);
             }
 
             const [orgRows] = await connection.execute('SELECT id FROM organizations WHERE user_id = ? AND name = ?', [userId, p.organizationName]);
@@ -178,14 +201,16 @@ app.post('/payments/import', authenticateToken, async (req, res) => {
             let billId = null;
             if (p.billName) {
                 const [billRows] = await connection.execute('SELECT id FROM bills WHERE user_id = ? AND organization_id = ? AND bill_name = ?', [userId, organizationId, p.billName]);
-                if (billRows.length > 0) {
-                    billId = billRows[0].id;
-                }
+                if (billRows.length > 0) billId = billRows[0].id;
             }
 
+            const formattedDatePaid = new Date(p.datePaid).toISOString().split('T')[0];
+            const dueDateToInsert = p.dueDate ? new Date(p.dueDate).toISOString().split('T')[0] : formattedDatePaid;
+            const paymentStatusToInsert = p.paymentStatus || 'paid';
+
             await connection.execute(
-                'INSERT INTO payments (user_id, organization_id, bill_id, amount_paid, date_paid, confirmation_code, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [userId, organizationId, billId, p.amountPaid, p.datePaid, p.paymentConfirmationCode || null, p.notes || null]
+                'INSERT INTO payments (user_id, organization_id, bill_id, amount_paid, date_paid, due_date, amount_due, payment_status, confirmation_code, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [userId, organizationId, billId, p.amountPaid, formattedDatePaid, dueDateToInsert, p.amountDue, paymentStatusToInsert, p.confirmationCode || null, p.notes || null]
             );
             importedCount++;
         }
