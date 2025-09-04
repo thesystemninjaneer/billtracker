@@ -10,6 +10,7 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState('');
+  
   const orgFileInputRef = useRef(null);
   const paymentFileInputRef = useRef(null);
 
@@ -363,16 +364,18 @@ const UserProfile = () => {
   // Render logic
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-      <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-md">
+      <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-2xl"> {/* Increased max-width for better layout */}
         <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">User Settings</h2>
+
         {loading && <p className="text-center text-blue-500">Loading settings...</p>}
         {error && <p className="text-center text-red-500 mb-4">{error}</p>}
         {message && <p className="text-center text-green-500 mb-4">{message}</p>}
         {!loading && !error && (
           <form onSubmit={handleSubmit} className="space-y-8">
+
             {/* --- User Profile Section --- */}
-            <div className="border-b border-gray-200 pb-6 mb-6">
-              <h3 className="text-2xl font-semibold text-gray-700 mb-4">Profile Information</h3>
+            <div className="border border-gray-200 p-6 rounded-lg shadow-sm">
+              <h3 className="text-2xl font-semibold text-gray-700 mb-4">Profile & Notifications</h3>
               <div>
                 <label htmlFor="username" className="block text-lg font-medium text-gray-700 mb-2">Username</label>
                 <input
@@ -508,7 +511,7 @@ const UserProfile = () => {
               </div>
             </div>
             {/* --- Organization Data Section --- */}
-            <div className="border-t border-gray-200 pt-6">
+            <div className="border border-gray-200 p-6 rounded-lg shadow-sm">
               <h3 className="text-2xl font-semibold text-gray-700 mb-4">Organization Data</h3>
               <p className="text-gray-600 mb-4">Export or import your list of organizations.</p>
               <div className="flex items-center gap-4">
@@ -528,7 +531,7 @@ const UserProfile = () => {
             </div>
             
             {/* --- Bill Payment Data Section --- */}
-            <div className="border-t border-gray-200 pt-6">
+            <div className="border border-gray-200 p-6 rounded-lg shadow-sm">
               <h3 className="text-2xl font-semibold text-gray-700 mb-4">Bill Payment Data</h3>
               <p className="text-gray-600 mb-4">Export or import payment records.</p>
               <div className="flex items-center gap-4">

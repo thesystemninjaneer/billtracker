@@ -103,12 +103,12 @@ const calculateNextDueDate = (dueDay, frequency) => {
 
 /**
  * @route GET /payments/export
- * @desc Export payment history for a specific organization or all organizations.
+ * @desc Export payment history, excluding records that have not been paid.
  * @access Private (requires JWT)
  */
 app.get('/payments/export', authenticateToken, async (req, res) => {
     const userId = req.user.id;
-    const { organizationId } = req.query; // e.g., '5' or 'all'
+    const { organizationId } = req.query;
 
     try {
         let query = `
@@ -125,7 +125,7 @@ app.get('/payments/export', authenticateToken, async (req, res) => {
             FROM payments p
             JOIN organizations o ON p.organization_id = o.id
             LEFT JOIN bills b ON p.bill_id = b.id
-            WHERE p.user_id = ?
+            WHERE p.user_id = ? AND p.amount_paid IS NOT NULL
         `;
         const queryParams = [userId];
 
@@ -159,7 +159,7 @@ app.get('/payments/export', authenticateToken, async (req, res) => {
 
 /**
  * @route POST /payments/import
- * @desc Import payment history from a JSON file.
+ * @desc Import payment history, skipping records that already exist.
  * @access Private (requires JWT)
  */
 app.post('/payments/import', authenticateToken, async (req, res) => {
@@ -175,22 +175,14 @@ app.post('/payments/import', authenticateToken, async (req, res) => {
         await connection.beginTransaction();
         
         let importedCount = 0;
+        let skippedIndexes = [];
 
-        // Loop with index for better error reporting
         for (const [index, p] of paymentsToImport.entries()) {
-            // FIX: Implement detailed, specific validation for each required field.
-            if (!p.organizationName) {
-                throw new Error(`Record at index ${index} is missing the required 'organizationName' field.`);
-            }
-            if (p.amountPaid == null) { // `== null` checks for both null and undefined
-                throw new Error(`Payment record for "${p.organizationName}" (index ${index}) is missing the required 'amountPaid' field.`);
-            }
-            if (!p.datePaid) {
-                throw new Error(`Payment record for "${p.organizationName}" (index ${index}) is missing the required 'datePaid' field.`);
-            }
-            if (p.amountDue == null) { // `== null` checks for both null and undefined
-                throw new Error(`Payment record for "${p.organizationName}" (index ${index}) is missing the required 'amountDue' field.`);
-            }
+            // Detailed validation for each required field.
+            if (!p.organizationName) throw new Error(`Record at index ${index} is missing 'organizationName'.`);
+            if (p.amountPaid == null) throw new Error(`Record for "${p.organizationName}" (index ${index}) is missing 'amountPaid'.`);
+            if (!p.datePaid) throw new Error(`Record for "${p.organizationName}" (index ${index}) is missing 'datePaid'.`);
+            if (p.amountDue == null) throw new Error(`Record for "${p.organizationName}" (index ${index}) is missing 'amountDue'.`);
 
             const [orgRows] = await connection.execute('SELECT id FROM organizations WHERE user_id = ? AND name = ?', [userId, p.organizationName]);
             if (orgRows.length === 0) {
@@ -198,14 +190,27 @@ app.post('/payments/import', authenticateToken, async (req, res) => {
             }
             const organizationId = orgRows[0].id;
 
+            const formattedDatePaid = new Date(p.datePaid).toISOString().split('T')[0];
+            const dueDateToInsert = p.dueDate ? new Date(p.dueDate).toISOString().split('T')[0] : formattedDatePaid;
+
+            // Check for a duplicate payment in the database.
+            // A duplicate is the same org, due date, and amount due.
+            const [existingPayments] = await connection.execute(
+                'SELECT id FROM payments WHERE user_id = ? AND organization_id = ? AND due_date = ? AND amount_due = ?',
+                [userId, organizationId, dueDateToInsert, p.amountDue]
+            );
+
+            if (existingPayments.length > 0) {
+                skippedIndexes.push(index);
+                continue; // Skip this record
+            }
+
             let billId = null;
             if (p.billName) {
                 const [billRows] = await connection.execute('SELECT id FROM bills WHERE user_id = ? AND organization_id = ? AND bill_name = ?', [userId, organizationId, p.billName]);
                 if (billRows.length > 0) billId = billRows[0].id;
             }
-
-            const formattedDatePaid = new Date(p.datePaid).toISOString().split('T')[0];
-            const dueDateToInsert = p.dueDate ? new Date(p.dueDate).toISOString().split('T')[0] : formattedDatePaid;
+            
             const paymentStatusToInsert = p.paymentStatus || 'paid';
 
             await connection.execute(
@@ -216,7 +221,13 @@ app.post('/payments/import', authenticateToken, async (req, res) => {
         }
 
         await connection.commit();
-        res.status(201).json({ message: `Successfully imported ${importedCount} payment records.` });
+
+        let finalMessage = `Import complete. Imported ${importedCount} of ${paymentsToImport.length} records.`;
+        if (skippedIndexes.length > 0) {
+            finalMessage += ` Skipped ${skippedIndexes.length} duplicate records found at the following index numbers in the import file: ${skippedIndexes.join(', ')}.`;
+        }
+
+        res.status(201).json({ message: finalMessage });
 
     } catch (error) {
         await connection.rollback();
