@@ -1,5 +1,5 @@
 // my-bill-tracker-frontend/src/pages/UserProfile.jsx
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import config from '../config';
@@ -7,9 +7,14 @@ import config from '../config';
 const UserProfile = () => {
   const { token: authToken, isAuthenticated, loading: authLoading, authAxios, user: authContextUser, setUser: setAuthContextUser } = useContext(AuthContext);
   const { addNotification } = useNotification();
-  const fileInputRef = useRef(null); // Rref for the hidden file input
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [message, setMessage] = useState('');
+  
+  const orgFileInputRef = useRef(null);
+  const paymentFileInputRef = useRef(null);
 
-  // State for User Profile
+  // State for forms
   const [userProfile, setUserProfile] = useState({
     username: '',
     email: '',
@@ -24,16 +29,33 @@ const UserProfile = () => {
     notification_time_offsets: [],
   });
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [message, setMessage] = useState('');
   const [newOffsetInput, setNewOffsetInput] = useState('');
+  
+  // State for import/export features
+  const [organizations, setOrganizations] = useState([]);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportOrgId, setExportOrgId] = useState('all');
+
+  const fetchOrganizations = useCallback(async () => {
+      try {
+        const response = await authAxios(config.ORGANIZATION_API_BASE_URL);
+        if (response.ok) {
+          const data = await response.json();
+          setOrganizations(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch organizations:", error);
+      }
+  }, [authAxios]);
 
   useEffect(() => {
     const fetchData = async () => {
       if (authLoading || !authToken) return;
-
+      setLoading(true);
+      setError(null);
       try {
+        await fetchOrganizations();
+        // ... fetches for userProfile and notificationSettings are here ...
         // --- Fetch User Profile ---
         const userProfileResponse = await authAxios(`${config.USER_API_BASE_URL}/profile`);
 
@@ -74,42 +96,29 @@ const UserProfile = () => {
     };
 
     fetchData();
-  }, [authToken, authLoading, authAxios]);
+  }, [authToken, authLoading, authAxios, fetchOrganizations]);
 
-  // Handler for triggering the Export ---
+  // --- Handlers for Organization Import/Export ---
   const handleExportOrganizations = async () => {
     setLoading(true);
-    addNotification('Preparing your export...', 'info');
     try {
       const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}/export`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch organizations for export.');
-      }
-      
-      const organizations = await response.json();
-      
-      if (organizations.length === 0) {
+      if (!response.ok) throw new Error('Failed to export organizations.');
+      const data = await response.json();
+      if (data.length === 0) {
         addNotification('You have no organizations to export.', 'info');
         return;
       }
-      
-      // Create a blob from the JSON data and trigger a download
-      const jsonString = JSON.stringify(organizations, null, 2); // Pretty print the JSON
-      const blob = new Blob([jsonString], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'bill-tracker-organizations.json';
-      document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+      a.remove();
       addNotification('Organizations exported successfully!', 'success');
-
     } catch (err) {
-      console.error('Error exporting organizations:', err);
       addNotification(err.message || 'An error occurred during export.', 'error');
     } finally {
       setLoading(false);
@@ -117,45 +126,34 @@ const UserProfile = () => {
   };
 
   // --- Handler for the hidden file input's change event ---
-  const handleFileChange = async (event) => {
+  const handleOrgFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) {
       return; // User cancelled the dialog
     }
 
     setLoading(true);
-    addNotification('Importing file...', 'info');
-
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const organizations = JSON.parse(e.target.result);
-        
+        const orgs = JSON.parse(e.target.result);
         const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}/import`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(organizations),
+          body: JSON.stringify(orgs),
         });
-
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to import organizations.');
+            const errData = await response.json();
+            throw new Error(errData.message || 'Failed to import organizations.');
         }
-
         const data = await response.json();
         addNotification(data.message, 'success');
-        
-        // Optionally, you could trigger a refresh of the dashboard data here
-        
+        fetchOrganizations(); // Refresh the list
       } catch (err) {
-        console.error('Error processing or importing file:', err);
         addNotification(err.message || 'File is not valid JSON or an API error occurred.', 'error');
       } finally {
         setLoading(false);
-        // Reset file input value to allow re-uploading the same file
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
+        if (orgFileInputRef.current) orgFileInputRef.current.value = '';
       }
     };
     
@@ -253,6 +251,66 @@ const UserProfile = () => {
     }
   };
 
+  // --- Handlers for Bill Payment Import/Export ---
+  const handleExportPayments = async () => {
+    if (!exportOrgId) return;
+    setIsExportModalOpen(false);
+    setLoading(true);
+    addNotification('Preparing export...', 'info');
+    try {
+      const response = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/export?organizationId=${exportOrgId}`);
+      if (!response.ok) throw new Error('Failed to fetch payment records.');
+      const records = await response.json();
+      if (records.length === 0) {
+        addNotification('No payment records found.', 'info');
+        setLoading(false);
+        return;
+      }
+      const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bill-payments-${exportOrgId}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      a.remove();
+      addNotification('Payment records exported!', 'success');
+    } catch (err) {
+      addNotification(err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    setLoading(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const payments = JSON.parse(e.target.result);
+        const response = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/import`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payments),
+        });
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.message);
+        }
+        const data = await response.json();
+        addNotification(data.message, 'success');
+      } catch (err) {
+        addNotification(err.message, 'error');
+      } finally {
+        setLoading(false);
+        if (paymentFileInputRef.current) paymentFileInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
   // Combined Submit Handler
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -298,21 +356,26 @@ const UserProfile = () => {
       setLoading(false);
     }
   };
+  if (loading) {
+      return <div className="text-center p-8">Loading settings...</div>
+  }
+
 
   // Render logic
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-      <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-md">
+      <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-2xl"> {/* Increased max-width for better layout */}
         <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">User Settings</h2>
 
         {loading && <p className="text-center text-blue-500">Loading settings...</p>}
-        {error && <p className="text-center text-red-500">{error}</p>}
-        {message && <p className="text-center text-green-500">{message}</p>}
+        {error && <p className="text-center text-red-500 mb-4">{error}</p>}
+        {message && <p className="text-center text-green-500 mb-4">{message}</p>}
         {!loading && !error && (
           <form onSubmit={handleSubmit} className="space-y-8">
+
             {/* --- User Profile Section --- */}
-            <div className="border-b border-gray-200 pb-6 mb-6">
-              <h3 className="text-2xl font-semibold text-gray-700 mb-4">Profile Information</h3>
+            <div className="border border-gray-200 p-6 rounded-lg shadow-sm">
+              <h3 className="text-2xl font-semibold text-gray-700 mb-4">Profile & Notifications</h3>
               <div>
                 <label htmlFor="username" className="block text-lg font-medium text-gray-700 mb-2">Username</label>
                 <input
@@ -447,51 +510,63 @@ const UserProfile = () => {
                 </div>
               </div>
             </div>
-            {/* --- Organization Settings Section --- */}
-            <div className="border-t border-gray-200 pt-6 mt-6">
-              <h3 className="text-2xl font-semibold text-gray-700 mb-4">Organization Settings</h3>
-              <p className="text-gray-600 mb-4">
-                Export your current list of organizations to a JSON file, or import a previously exported file to add organizations in bulk.
-              </p>
+            {/* --- Organization Data Section --- */}
+            <div className="border border-gray-200 p-6 rounded-lg shadow-sm">
+              <h3 className="text-2xl font-semibold text-gray-700 mb-4">Organization Data</h3>
+              <p className="text-gray-600 mb-4">Export or import your list of organizations.</p>
               <div className="flex items-center gap-4">
                 <button
-                  type="button"
-                  onClick={handleExportOrganizations}
-                  disabled={loading}
-                  className="flex-1 text-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                  type="button" onClick={handleExportOrganizations} disabled={loading} className="flex-1 text-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
                   Export Organizations
                 </button>
                 <button
-                  type="button"
-                  onClick={() => fileInputRef.current.click()} // Trigger the hidden file input
-                  disabled={loading}
-                  className="flex-1 text-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+                  type="button" onClick={() => orgFileInputRef.current.click()} disabled={loading} className="flex-1 text-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
                 >
                   Import Organizations
                 </button>
                 {/* Hidden file input for the import dialog */}
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept=".json"
-                  style={{ display: 'none' }}
-                />
+                <input type="file" ref={orgFileInputRef} onChange={handleOrgFileChange} accept=".json" style={{ display: 'none' }} />
+              </div>
+            </div>
+            
+            {/* --- Bill Payment Data Section --- */}
+            <div className="border border-gray-200 p-6 rounded-lg shadow-sm">
+              <h3 className="text-2xl font-semibold text-gray-700 mb-4">Bill Payment Data</h3>
+              <p className="text-gray-600 mb-4">Export or import payment records.</p>
+              <div className="flex items-center gap-4">
+                <button type="button" onClick={() => setIsExportModalOpen(true)} disabled={loading} className="flex-1 text-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">Export Records</button>
+                <button type="button" onClick={() => paymentFileInputRef.current.click()} disabled={loading} className="flex-1 text-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50">Import Records</button>
+                <input type="file" ref={paymentFileInputRef} onChange={handlePaymentFileChange} accept=".json" style={{ display: 'none' }} />
               </div>
             </div>
 
             {/* Submit Button for all settings */}
             <button
-              type="submit"
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              disabled={loading}
+              type="submit" disabled={loading} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-gray-600 hover:bg-gray-700 disabled:opacity-50"
             >
-              {loading ? 'Saving...' : 'Save All Settings'}
+              Save All Settings
             </button>
           </form>
         )}
       </div>
+
+      {isExportModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 shadow-xl w-full max-w-sm">
+            <h3 className="text-xl font-bold mb-4">Export Payment Records</h3>
+            <p className="mb-4 text-gray-600">Select an organization to export its records.</p>
+            <select value={exportOrgId} onChange={(e) => setExportOrgId(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md mb-6">
+              <option value="all">All Organizations</option>
+              {organizations.map(org => (<option key={org.id} value={org.id}>{org.name}</option>))}
+            </select>
+            <div className="flex justify-end gap-4">
+              <button onClick={() => setIsExportModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded-md">Cancel</button>
+              <button onClick={handleExportPayments} className="px-4 py-2 bg-blue-600 text-white rounded-md">Export</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

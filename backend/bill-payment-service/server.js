@@ -101,6 +101,142 @@ const calculateNextDueDate = (dueDay, frequency) => {
     return nextDueDate;
 };
 
+/**
+ * @route GET /payments/export
+ * @desc Export payment history, excluding records that have not been paid.
+ * @access Private (requires JWT)
+ */
+app.get('/payments/export', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const { organizationId } = req.query;
+
+    try {
+        let query = `
+            SELECT 
+                o.name as organizationName, 
+                b.bill_name as billName, 
+                p.amount_paid, 
+                p.date_paid, 
+                p.confirmation_code, 
+                p.notes, 
+                p.due_date, 
+                p.amount_due,
+                p.payment_status
+            FROM payments p
+            JOIN organizations o ON p.organization_id = o.id
+            LEFT JOIN bills b ON p.bill_id = b.id
+            WHERE p.user_id = ? AND p.amount_paid IS NOT NULL
+        `;
+        const queryParams = [userId];
+
+        if (organizationId && organizationId !== 'all') {
+            query += ' AND p.organization_id = ?';
+            queryParams.push(organizationId);
+        }
+        
+        query += ' ORDER BY o.name, p.date_paid DESC';
+
+        const [payments] = await pool.execute(query, queryParams);
+        
+        const exportData = payments.map(p => ({
+            organizationName: p.organizationName,
+            billName: p.billName || null,
+            amountPaid: p.amount_paid,
+            datePaid: p.date_paid,
+            dueDate: p.due_date,
+            amountDue: p.amount_due,
+            paymentStatus: p.payment_status,
+            confirmationCode: p.confirmation_code || null,
+            notes: p.notes || null
+        }));
+
+        res.status(200).json(exportData);
+    } catch (error) {
+        console.error('Error exporting payment records:', error);
+        res.status(500).json({ message: 'Server error during export.' });
+    }
+});
+
+/**
+ * @route POST /payments/import
+ * @desc Import payment history, skipping records that already exist.
+ * @access Private (requires JWT)
+ */
+app.post('/payments/import', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const paymentsToImport = req.body;
+
+    if (!Array.isArray(paymentsToImport) || paymentsToImport.length === 0) {
+        return res.status(400).json({ message: 'Request body must be a non-empty array of payment records.' });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        
+        let importedCount = 0;
+        let skippedIndexes = [];
+
+        for (const [index, p] of paymentsToImport.entries()) {
+            // Detailed validation for each required field.
+            if (!p.organizationName) throw new Error(`Record at index ${index} is missing 'organizationName'.`);
+            if (p.amountPaid == null) throw new Error(`Record for "${p.organizationName}" (index ${index}) is missing 'amountPaid'.`);
+            if (!p.datePaid) throw new Error(`Record for "${p.organizationName}" (index ${index}) is missing 'datePaid'.`);
+            if (p.amountDue == null) throw new Error(`Record for "${p.organizationName}" (index ${index}) is missing 'amountDue'.`);
+
+            const [orgRows] = await connection.execute('SELECT id FROM organizations WHERE user_id = ? AND name = ?', [userId, p.organizationName]);
+            if (orgRows.length === 0) {
+                throw new Error(`Organization not found for name: "${p.organizationName}". Please add it first or correct the name.`);
+            }
+            const organizationId = orgRows[0].id;
+
+            const formattedDatePaid = new Date(p.datePaid).toISOString().split('T')[0];
+            const dueDateToInsert = p.dueDate ? new Date(p.dueDate).toISOString().split('T')[0] : formattedDatePaid;
+
+            // Check for a duplicate payment in the database.
+            // A duplicate is the same org, due date, and amount due.
+            const [existingPayments] = await connection.execute(
+                'SELECT id FROM payments WHERE user_id = ? AND organization_id = ? AND due_date = ? AND amount_due = ?',
+                [userId, organizationId, dueDateToInsert, p.amountDue]
+            );
+
+            if (existingPayments.length > 0) {
+                skippedIndexes.push(index);
+                continue; // Skip this record
+            }
+
+            let billId = null;
+            if (p.billName) {
+                const [billRows] = await connection.execute('SELECT id FROM bills WHERE user_id = ? AND organization_id = ? AND bill_name = ?', [userId, organizationId, p.billName]);
+                if (billRows.length > 0) billId = billRows[0].id;
+            }
+            
+            const paymentStatusToInsert = p.paymentStatus || 'paid';
+
+            await connection.execute(
+                'INSERT INTO payments (user_id, organization_id, bill_id, amount_paid, date_paid, due_date, amount_due, payment_status, confirmation_code, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [userId, organizationId, billId, p.amountPaid, formattedDatePaid, dueDateToInsert, p.amountDue, paymentStatusToInsert, p.confirmationCode || null, p.notes || null]
+            );
+            importedCount++;
+        }
+
+        await connection.commit();
+
+        let finalMessage = `Import complete. Imported ${importedCount} of ${paymentsToImport.length} records.`;
+        if (skippedIndexes.length > 0) {
+            finalMessage += ` Skipped ${skippedIndexes.length} duplicate records found at the following index numbers in the import file: ${skippedIndexes.join(', ')}.`;
+        }
+
+        res.status(201).json({ message: finalMessage });
+
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error importing payment records:', error);
+        res.status(500).json({ message: 'Failed to import payment records. The entire operation was rolled back.', error: error.message });
+    } finally {
+        connection.release();
+    }
+});
 
 /**
  * @route POST /bills
@@ -397,7 +533,6 @@ app.get('/payments/recently-paid', async (req, res) => {
         res.status(500).json({ message: 'Server error fetching recently paid payments.' });
     }
 });
-
 
 /**
  * @route GET /payments/:id
