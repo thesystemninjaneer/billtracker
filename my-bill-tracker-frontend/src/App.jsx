@@ -6,8 +6,10 @@ import Dashboard from './pages/Dashboard.jsx';
 import BillOrganizationForm from './pages/BillOrganizationForm.jsx';
 import RecordPaymentForm from './pages/RecordPaymentForm.jsx';
 import AddBillForm from './pages/AddBillForm.jsx';
+import EditBillListPage from './pages/EditBillListPage.jsx'; // 1. Import new page
+import EditBillForm from './pages/EditBillForm.jsx';       // 2. Import new form
 import Register from './pages/Register.jsx';
-import Login from './pages/Login.jsx'; // Ensure Login component is imported
+import Login from './pages/Login.jsx';
 import NotFound from './pages/NotFound.jsx';
 import UserProfile from './pages/UserProfile';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
@@ -163,6 +165,12 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          <Route path="/edit-bills" element={<ProtectedRoute><EditBillListPage /></ProtectedRoute>} />
+          <Route path="/edit-bill/:id" element={<ProtectedRoute><EditBillForm /></ProtectedRoute>} />
+          
+
+
+
           <Route
             path="/record-payment"
             element={

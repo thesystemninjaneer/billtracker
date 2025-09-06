@@ -123,7 +123,12 @@ function Dashboard() {
                                         {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
                                         <span> - {formatCurrency(bill.amountDue)}</span>
                                         <span className="due-date"> - Due: {formatDate(bill.dueDate)}</span>
-                                        <Link to={`/record-payment?organizationId=${bill.organizationId}&organizationName=${bill.organizationName}&billId=${bill.billId}&amountDue=${bill.amountDue}&dueDate=${bill.dueDate}`} className="action-link record-link">Record Payment</Link>
+                                        <Link 
+                                        to={`/record-payment?paymentId=${bill.id}&organizationName=${encodeURIComponent(bill.organizationName)}&amountDue=${bill.amountDue}`} 
+                                        className="action-link record-link"
+                                        >
+                                        Record Payment
+                                        </Link>
                                     </li>
                                 ))}
                             </ul>

@@ -238,6 +238,8 @@ app.post('/payments/import', authenticateToken, async (req, res) => {
     }
 });
 
+// --- Bill CRUD Routes ---
+
 /**
  * @route POST /bills
  * @desc Add a new recurring bill entry AND create its first upcoming payment record
@@ -434,41 +436,41 @@ app.delete('/bills/:id', async (req, res) => {
 // --- API Endpoints for Payments (Individual Records) ---
 
 /**
- * @route POST /payments
- * @desc Record a new bill payment
- * @access Private
- */
+ * @route POST /payments
+ * @desc Record a new bill payment (for ad-hoc payments)
+ * @access Private
+ */
 app.post('/payments', async (req, res) => {
-  const { billId, organizationId, dueDate, amountDue, datePaid, paymentConfirmationCode, amountPaid, notes } = req.body;
+  const { billId, organizationId, dueDate, amountDue, datePaid, confirmationCode, amountPaid, notes } = req.body;
   const user_id = req.user.id;
-  const payment_status = (datePaid && amountPaid !== null) ? 'paid' : 'pending'; // Auto-set status
+  const payment_status = (datePaid && amountPaid != null) ? 'paid' : 'pending';
 
-  if (!organizationId || !dueDate || amountDue === undefined) { // Check for amountDue explicitly
+  if (!organizationId || !dueDate || amountDue === undefined) {
     return res.status(400).json({ message: 'Organization ID, Due Date, and Amount Due are required.' });
   }
 
   try {
-    // Optional: Verify organization_id and bill_id belong to user
+    // Verify organization_id belongs to user
     const [orgs] = await pool.execute('SELECT id FROM organizations WHERE id = ? AND user_id = ?', [organizationId, user_id]);
     if (orgs.length === 0) {
-      return res.status(404).json({ message: 'Organization not found or not authorized.' });
+        return res.status(404).json({ message: 'Organization not found or not authorized.' });
     }
     if (billId) {
-      const [bills] = await pool.execute('SELECT id FROM bills WHERE id = ? AND user_id = ?', [billId, user_id]);
-      if (bills.length === 0) {
-        return res.status(404).json({ message: 'Associated bill entry not found or not authorized.' });
-      }
+        const [bills] = await pool.execute('SELECT id FROM bills WHERE id = ? AND user_id = ?', [billId, user_id]);
+        if (bills.length === 0) {
+          return res.status(404).json({ message: 'Associated bill entry not found or not authorized.' });
+        }
     }
 
     const [result] = await pool.execute(
-      `INSERT INTO payments (user_id, bill_id, organization_id, due_date, amount_due, payment_status, date_paid, amount_paid, confirmation_code, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [user_id, billId || null, organizationId, dueDate, amountDue, payment_status, datePaid || null, amountPaid || null, paymentConfirmationCode, notes]
+        `INSERT INTO payments (user_id, bill_id, organization_id, due_date, amount_due, payment_status, date_paid, amount_paid, confirmation_code, notes)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        // Ensure all optional fields default to null instead of undefined
+        [user_id, billId || null, organizationId, dueDate, amountDue, payment_status, datePaid || null, amountPaid || null, confirmationCode || null, notes || null]
     );
     res.status(201).json({
-      message: 'Payment recorded successfully',
-      paymentId: result.insertId,
-      payment: { id: result.insertId, billId, organizationId, dueDate, amountDue, payment_status, datePaid, amountPaid, paymentConfirmationCode, notes }
+        message: 'Payment recorded successfully',
+        paymentId: result.insertId,
     });
   } catch (error) {
     console.error('Error recording payment:', error);
@@ -566,49 +568,70 @@ app.get('/payments/:id', async (req, res) => {
   }
 });
 
+
 /**
  * @route PUT /payments/:id
- * @desc Update a payment record
+ * @desc Update a payment record, specifically for recording a payment against an upcoming bill.
  * @access Private
  */
 app.put('/payments/:id', async (req, res) => {
-  const { id } = req.params;
-  const { billId, organizationId, dueDate, amountDue, datePaid, paymentConfirmationCode, amountPaid, notes, paymentStatus } = req.body;
-  const user_id = req.user.id;
+    const { id } = req.params;
+    const user_id = req.user.id;
+    // For recording a payment, we expect the date it was paid and the amount of this specific payment.
+    const { datePaid, amountPaid: newPaymentAmount, confirmationCode, notes } = req.body;
 
-  if (!organizationId || !dueDate || amountDue === undefined) {
-    return res.status(400).json({ message: 'Organization ID, Due Date, and Amount Due are required.' });
-  }
-
-  try {
-    // Optional: Verify organization_id and bill_id belong to user
-    const [orgs] = await pool.execute('SELECT id FROM organizations WHERE id = ? AND user_id = ?', [organizationId, user_id]);
-    if (orgs.length === 0) {
-      return res.status(404).json({ message: 'Organization not found or not authorized.' });
-    }
-    if (billId) {
-      const [bills] = await pool.execute('SELECT id FROM bills WHERE id = ? AND user_id = ?', [billId, user_id]);
-      if (bills.length === 0) {
-        return res.status(404).json({ message: 'Associated bill entry not found or not authorized.' });
-      }
+    // Validate the input for this specific action
+    if (newPaymentAmount == null || !datePaid) {
+        return res.status(400).json({ message: 'To record a payment, a valid amountPaid and datePaid are required.' });
     }
 
-    const [result] = await pool.execute(
-      `UPDATE payments
-        SET bill_id = ?, organization_id = ?, due_date = ?, amount_due = ?, payment_status = ?,
-            date_paid = ?, amount_paid = ?, confirmation_code = ?, notes = ?
-        WHERE id = ? AND user_id = ?`,
-      [billId || null, organizationId, dueDate, amountDue, paymentStatus, datePaid || null, amountPaid || null, paymentConfirmationCode, notes, id, user_id]
-    );
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Payment record not found or not authorized to update.' });
+        // Lock the row for update to prevent race conditions
+        const [payments] = await connection.execute(
+            'SELECT amount_due, amount_paid, payment_status FROM payments WHERE id = ? AND user_id = ? FOR UPDATE',
+            [id, user_id]
+        );
+
+        if (payments.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: 'Payment record not found or not authorized.' });
+        }
+        const currentPayment = payments[0];
+
+        // Calculate the new total amount paid by adding the new payment to any existing amount.
+        const newTotalAmountPaid = (Number(currentPayment.amount_paid) || 0) + Number(newPaymentAmount);
+        
+        // Determine the new status based on the total amount paid.
+        let newStatus = currentPayment.payment_status;
+        if (newTotalAmountPaid >= Number(currentPayment.amount_due)) {
+            newStatus = 'paid'; // Mark as paid if the total meets or exceeds the amount due.
+        }
+
+        // Update the payment record with the new total and status.
+        const [result] = await connection.execute(
+            `UPDATE payments
+             SET amount_paid = ?, date_paid = ?, confirmation_code = ?, notes = ?, payment_status = ?
+             WHERE id = ? AND user_id = ?`,
+            [newTotalAmountPaid, datePaid, confirmationCode || null, notes || null, newStatus, id, user_id]
+        );
+        
+        await connection.commit();
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Payment record not found during update.' });
+        }
+        res.status(200).json({ message: 'Payment recorded successfully.', newStatus: newStatus });
+
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error updating payment record:', error);
+        res.status(500).json({ message: 'Server error updating payment record.' });
+    } finally {
+        connection.release();
     }
-    res.status(200).json({ message: 'Payment record updated successfully.' });
-  } catch (error) {
-    console.error('Error updating payment record:', error);
-    res.status(500).json({ message: 'Server error updating payment record.' });
-  }
 });
 
 /**
