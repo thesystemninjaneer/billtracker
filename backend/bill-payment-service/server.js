@@ -69,37 +69,28 @@ app.use('/api/notifications/test-slack', authenticateToken);
  */
 const calculateNextDueDate = (dueDay, frequency) => {
     const today = new Date();
-    let nextDueDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
+    today.setHours(0, 0, 0, 0); // Normalize today to the start of the day
+    let nextDueDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
 
-    // If the calculated date is in the past, move it to the next month/period
     if (nextDueDate < today) {
         switch (frequency) {
             case 'monthly':
                 nextDueDate.setMonth(nextDueDate.getMonth() + 1);
-                break;
-            case 'quarterly':
-                nextDueDate.setMonth(nextDueDate.getMonth() + 3);
-                break;
-            case 'annually':
-                nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
-                break;
-            default:
-                // For 'one-time' or unknown frequency, assume today if in past, or next month
-                nextDueDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
-                if (nextDueDate < today) {
-                    nextDueDate.setMonth(nextDueDate.getMonth() + 1);
-                }
-                break;
-        }
-    }
-    // Handle cases where dueDay is greater than days in month (e.g., Feb 30)
-    if (nextDueDate.getDate() !== dueDay) {
-        nextDueDate.setDate(0); // Set to last day of previous month, then add dueDay
-        nextDueDate.setDate(dueDay);
-    }
-
-    return nextDueDate;
+                break;
+            case 'quarterly':
+                nextDueDate.setMonth(nextDueDate.getMonth() + 3);
+                break;
+            case 'annually':
+                nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
+                break;
+            default:
+                nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+                break;
+        }
+    }
+    return nextDueDate;
 };
+
 
 /**
  * @route GET /payments/export
@@ -367,44 +358,56 @@ app.get('/bills/:id', async (req, res) => {
 });
 
 /**
- * @route PUT /bills/:id
- * @desc Update a recurring bill entry
- * @access Private
- */
-app.put('/bills/:id', async (req, res) => {
-  const { id } = req.params;
-  const { organizationId, billName, dueDay, typicalAmount, frequency, notes, isActive } = req.body;
-  const user_id = req.user.id;
+ * @route PUT /bills/:id
+ * @desc Update a recurring bill entry and clear any associated pending payments to allow regeneration.
+ * @access Private
+ */
+app.put('/bills/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { organizationId, billName, dueDay, typicalAmount, frequency, notes, isActive } = req.body;
+    const userId = req.user.id;
 
-  if (!organizationId || !billName) {
-    return res.status(400).json({ message: 'Organization ID and Bill Name are required.' });
-  }
-
-  try {
-    // Optional: Verify organization_id belongs to user
-    const [orgs] = await pool.execute('SELECT id FROM organizations WHERE id = ? AND user_id = ?', [organizationId, user_id]);
-    if (orgs.length === 0) {
-      return res.status(404).json({ message: 'Organization not found or not authorized.' });
+    if (!organizationId || !billName) {
+        return res.status(400).json({ message: 'Organization ID and Bill Name are required.' });
     }
 
-    const [result] = await pool.execute(
-      `UPDATE bills
-        SET organization_id = ?, bill_name = ?, due_day = ?, typical_amount = ?, frequency = ?, notes = ?, is_active = ?
-        WHERE id = ? AND user_id = ?`,
-      [organizationId, billName, dueDay, typicalAmount, frequency, notes, isActive, id, user_id]
-    );
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Bill entry not found or not authorized to update.' });
+        // Step 1: Update the main recurring bill template in the 'bills' table.
+        const [updateResult] = await connection.execute(
+            `UPDATE bills
+             SET organization_id = ?, bill_name = ?, due_day = ?, typical_amount = ?, frequency = ?, notes = ?, is_active = ?
+             WHERE id = ? AND user_id = ?`,
+            [organizationId, billName, dueDay || null, typicalAmount || null, frequency, notes, isActive, id, userId]
+        );
+
+        if (updateResult.affectedRows === 0) {
+            throw new Error('Bill entry not found or not authorized to update.');
+        }
+
+        // Step 2: Delete any future 'pending' payment records for this bill.
+        // This forces the upcoming bill generation logic to recreate it correctly on the next dashboard load.
+        const todayISO = new Date().toISOString().split('T')[0];
+        await connection.execute(
+            `DELETE FROM payments WHERE bill_id = ? AND user_id = ? AND payment_status = 'pending' AND due_date >= ?`,
+            [id, userId, todayISO]
+        );
+
+        await connection.commit();
+        res.status(200).json({ message: 'Bill entry updated successfully. Future upcoming payments will be regenerated.' });
+
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error updating bill entry:', error);
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ message: 'A bill with this name already exists for this organization.' });
+        }
+        res.status(500).json({ message: error.message || 'Server error updating bill entry.' });
+    } finally {
+        connection.release();
     }
-    res.status(200).json({ message: 'Bill entry updated successfully.' });
-  } catch (error) {
-    console.error('Error updating bill entry:', error);
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ message: 'A bill with this name already exists for this organization and user.' });
-    }
-    res.status(500).json({ message: 'Server error updating bill entry.' });
-  }
 });
 
 /**
@@ -478,34 +481,74 @@ app.post('/payments', async (req, res) => {
   }
 });
 
+
 /**
- * @route GET /payments/upcoming
- * @desc Get upcoming bills (payments with status 'pending' or 'overdue') for a user
- * @access Private
- */
-app.get('/payments/upcoming', async (req, res) => {
-    const user_id = req.user.id;
-    const today = new Date().toISOString().split('T')[0]; // Current date YYYY-MM-DD
+ * @route GET /payments/upcoming
+ * @desc Get upcoming bills due within the next 14 days, creating them Just-In-Time if they don't exist.
+ * @access Private
+ */
+app.get('/payments/upcoming', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const connection = await pool.getConnection();
 
     try {
-        const [rows] = await pool.execute(
+        // Step 1: Fetch all active recurring bills for the user.
+        const [recurringBills] = await connection.execute(
+            'SELECT id, organization_id, due_day, typical_amount, frequency FROM bills WHERE user_id = ? AND is_active = 1',
+            [userId]
+        );
+
+        // Step 2: For each recurring bill, check if an upcoming payment record exists and create it if not.
+        for (const bill of recurringBills) {
+            if (!bill.due_day || !bill.frequency) continue;
+
+            const nextDueDate = calculateNextDueDate(bill.due_day, bill.frequency);
+            const nextDueDateISO = nextDueDate.toISOString().split('T')[0];
+
+            const [existingPayments] = await connection.execute(
+                'SELECT id FROM payments WHERE user_id = ? AND bill_id = ? AND due_date = ?',
+                [userId, bill.id, nextDueDateISO]
+            );
+
+            if (existingPayments.length === 0) {
+                await connection.execute(
+                    `INSERT INTO payments (user_id, bill_id, organization_id, due_date, amount_due, payment_status)
+                     VALUES (?, ?, ?, ?, ?, ?)`,
+                    [userId, bill.id, bill.organization_id, nextDueDateISO, bill.typical_amount, 'pending']
+                );
+            }
+        }
+
+        // Step 3: Fetch the complete list of upcoming bills within the next 14 days.
+        const today = new Date();
+        const fourteenDaysFromNow = new Date();
+        fourteenDaysFromNow.setDate(today.getDate() + 14);
+
+        const todayISO = today.toISOString().split('T')[0];
+        const fourteenDaysFromNowISO = fourteenDaysFromNow.toISOString().split('T')[0];
+
+        const [upcomingRows] = await connection.execute(
             `SELECT p.id, p.bill_id AS billId, p.organization_id AS organizationId, p.due_date AS dueDate,
-                    p.amount_due AS amountDue, p.payment_status AS paymentStatus, p.date_paid AS datePaid,
-                    p.amount_paid AS amountPaid, p.confirmation_code AS confirmationCode, p.notes,
+                    p.amount_due AS amountDue, p.payment_status AS paymentStatus, p.amount_paid AS amountPaid,
                     o.name AS organizationName, b.bill_name AS billName
              FROM payments p
              JOIN organizations o ON p.organization_id = o.id
              LEFT JOIN bills b ON p.bill_id = b.id
-             WHERE p.user_id = ? AND p.payment_status IN ('pending', 'overdue') AND p.due_date >= ?
+             WHERE p.user_id = ? AND p.payment_status IN ('pending', 'overdue') AND p.due_date >= ? AND p.due_date <= ?
              ORDER BY p.due_date ASC`,
-            [user_id, today]
+            [userId, todayISO, fourteenDaysFromNowISO]
         );
-        res.status(200).json(rows);
+
+        res.status(200).json(upcomingRows);
+
     } catch (error) {
-        console.error('Error fetching upcoming payments:', error);
-        res.status(500).json({ message: 'Server error fetching upcoming payments.' });
+        console.error('Error fetching or generating upcoming payments:', error);
+        res.status(500).json({ message: 'Server error while handling upcoming payments.' });
+    } finally {
+        connection.release();
     }
 });
+
 
 /**
  * @route GET /payments/recently-paid

@@ -1,55 +1,53 @@
-// my-bill-tracker-frontend/src/pages/Dashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import config from '../config';
+import { useAuth } from '../context/AuthContext.jsx';
+import config from '../config.js';
 import './Dashboard.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 
 function Dashboard() {
-    // Get the new `isAuthenticated` and `loading` states from your AuthContext
-    const { user, authAxios, isAuthenticated, loading } = useAuth();
+    const { authAxios, isAuthenticated, loading } = useAuth();
     const [organizations, setOrganizations] = useState([]);
     const [upcomingBills, setUpcomingBills] = useState([]);
     const [recentlyPaidBills, setRecentlyPaidBills] = useState([]);
-    const [isFetching, setIsFetching] = useState(false);
+    const [recurringBills, setRecurringBills] = useState([]);
+    const [isFetching, setIsFetching] = useState(true);
     const [error, setError] = useState(null);
 
-    const [organizationsLimit, setOrganizationsLimit] = useState(10);
-    const [upcomingBillsLimit, setUpcomingBillsLimit] = useState(10);
+    // State for paging/collapsing sections
     const [paidBillsLimit, setPaidBillsLimit] = useState(10);
-
     const [isOrganizationsCollapsed, setIsOrganizationsCollapsed] = useState(true);
     const [isUpcomingBillsCollapsed, setIsUpcomingBillsCollapsed] = useState(false);
     const [isRecentlyPaidCollapsed, setIsRecentlyPaidCollapsed] = useState(true);
 
     useEffect(() => {
-        // This effect will only run when the authentication is verified and not loading.
-        // This prevents the fetch call from running before authAxios is ready.
         if (isAuthenticated && !loading) {
             const fetchData = async () => {
+                setIsFetching(true);
                 try {
-                    setIsFetching(true);
-                    setError(null);
-
-                    // Use the custom authAxios function from your context
-                    const [orgsResponse, upcomingResponse, paidResponse] = await Promise.all([
-                        authAxios(`${config.ORGANIZATION_API_BASE_URL}`),
+                    const [orgsRes, upcomingRes, paidRes, billsRes] = await Promise.all([
+                        authAxios(config.ORGANIZATION_API_BASE_URL),
                         authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/upcoming`),
                         authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/recently-paid`),
+                        authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills`)
                     ]);
                     
-                    const orgsData = await orgsResponse.json();
-                    const upcomingData = await upcomingResponse.json();
-                    const paidData = await paidResponse.json();
+                    if (!orgsRes.ok || !upcomingRes.ok || !paidRes.ok || !billsRes.ok) {
+                        throw new Error('Failed to load all dashboard data.');
+                    }
+
+                    const orgsData = await orgsRes.json();
+                    const upcomingData = await upcomingRes.json();
+                    const paidData = await paidRes.json();
+                    const billsData = await billsRes.json();
 
                     setOrganizations(orgsData);
                     setUpcomingBills(upcomingData);
                     setRecentlyPaidBills(paidData);
+                    setRecurringBills(billsData);
 
                 } catch (err) {
-                    console.error("Failed to fetch dashboard data:", err);
                     setError("Failed to load dashboard data. Please try again.");
                 } finally {
                     setIsFetching(false);
@@ -57,162 +55,113 @@ function Dashboard() {
             };
             fetchData();
         }
-    }, [isAuthenticated, loading, authAxios]); // Depend on isAuthenticated, loading, and authAxios
+    }, [isAuthenticated, loading, authAxios]);
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-    };
-
+    const formatCurrency = (amount) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    
     const formatDate = (dateString) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
+            timeZone: 'UTC'
         });
     };
-
-    const formatPaidDate = (dateString) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
-    };
-
-    const organizationsToShow = organizations.slice(0, organizationsLimit);
-    const hasMoreOrganizations = organizations.length > organizationsLimit;
-
-    const upcomingBillsToShow = upcomingBills.slice(0, upcomingBillsLimit);
-    const hasMoreUpcomingBills = upcomingBills.length > upcomingBillsLimit;
-
+    
+    // Sliced data for paging
     const recentlyPaidBillsToShow = recentlyPaidBills.slice(0, paidBillsLimit);
     const hasMorePaidBills = recentlyPaidBills.length > paidBillsLimit;
 
-    // Use an early return to display loading status and prevent render errors.
-    if (!isAuthenticated || loading) {
-        return <div className="dashboard-container">Loading dashboard...</div>;
-    }
-
-    if (!user) {
-        return <div className="dashboard-container">Please log in to view your dashboard.</div>;
-    }
-
-    if (isFetching) {
-      return <div className="dashboard-container">Fetching data...</div>;
-    }
-
+    if (loading || isFetching) return <div className="dashboard-container">Loading dashboard...</div>;
+    
     return (
         <div className="dashboard-container">
-            <h2>Dashboard</h2>
             {error && <p className="error-message">{error}</p>}
 
+            {/* Upcoming Bills Section */}
             <section className="dashboard-section upcoming-bills">
                 <h3 onClick={() => setIsUpcomingBillsCollapsed(!isUpcomingBillsCollapsed)} className="collapsible-header">
-                    <FontAwesomeIcon icon={isUpcomingBillsCollapsed ? faChevronRight : faChevronDown} className="chevron-icon" />
-                    📅 Upcoming Bills Due
+                    <FontAwesomeIcon icon={isUpcomingBillsCollapsed ? faChevronRight : faChevronDown} /> 📅 Upcoming Bills Due
                 </h3>
                 {!isUpcomingBillsCollapsed && (
-                    <div className="collapsible-content">
-                        {upcomingBillsToShow.length === 0 ? (
-                            <p>No upcoming bills to display yet. Record a payment or add new bills!</p>
-                        ) : (
-                            <ul>
-                                {upcomingBillsToShow.map(bill => (
-                                    <li key={bill.id} className="bill-item upcoming-item">
-                                        <span className="bill-org">{bill.organizationName}</span>
-                                        {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
-                                        <span> - {formatCurrency(bill.amountDue)}</span>
-                                        <span className="due-date"> - Due: {formatDate(bill.dueDate)}</span>
-                                        <Link 
-                                        to={`/record-payment?paymentId=${bill.id}&organizationName=${encodeURIComponent(bill.organizationName)}&amountDue=${bill.amountDue}`} 
-                                        className="action-link record-link"
-                                        >
-                                        Record Payment
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                        {hasMoreUpcomingBills && (
-                            <button
-                                onClick={() => setUpcomingBillsLimit(upcomingBillsLimit + 10)}
-                                className="load-more-btn"
-                            >
-                                Load more...
-                            </button>
-                        )}
-                    </div>
+                    <ul>
+                        {upcomingBills.length > 0 ? upcomingBills.map(bill => (
+                            <li key={bill.id} className="bill-item upcoming-item">
+                                <div>
+                                    <span className="bill-org">{bill.organizationName}</span>
+                                    {bill.billName && <span className="bill-name"> ({bill.billName})</span>} -
+                                    <span className="due-date"> Due {formatDate(bill.dueDate)}: </span>
+                                    <span>{formatCurrency(bill.amountDue)}</span>
+                                </div>
+                                <Link to={`/record-payment?paymentId=${bill.id}`} className="action-link record-link">Record Payment</Link>
+                            </li>
+                        )) : <p>No upcoming bills.</p>}
+                    </ul>
                 )}
             </section>
 
+            {/* Organizations & Recurring Bills Section */}
             <section className="dashboard-section bill-organizations">
                 <h3 onClick={() => setIsOrganizationsCollapsed(!isOrganizationsCollapsed)} className="collapsible-header">
-                    <FontAwesomeIcon icon={isOrganizationsCollapsed ? faChevronRight : faChevronDown} className="chevron-icon" />
-                    🏠 Your Bill Organizations
+                    <FontAwesomeIcon icon={isOrganizationsCollapsed ? faChevronRight : faChevronDown} /> 🏠 Your Bill Organizations
                 </h3>
                 {!isOrganizationsCollapsed && (
-                    <div className="collapsible-content">
-                        {organizationsToShow.length === 0 ? (
-                            <p>No billing organizations added yet. <Link to="/add-organization">Add one now!</Link></p>
-                        ) : (
-                            <ul>
-                                {organizationsToShow.map(org => (
-                                    <li key={org.id} className="bill-item">
-                                        <span className="bill-org">{org.name}</span>
-                                        <span>Account: {org.accountNumber}</span>
-                                        <span>Due Day: {org.typicalDueDay || 'N/A'}</span>
+                    <ul>
+                        {organizations.length > 0 ? organizations.map(org => {
+                            const billsForThisOrg = recurringBills.filter(bill => bill.organizationId === org.id);
+                            return (
+                                <li key={org.id} className="bill-item organization-group">
+                                    <div className="organization-header">
+                                        <div>
+                                            <span className="bill-org">{org.name}</span>
+                                            <span> (Account: {org.accountNumber || 'N/A'})</span>
+                                        </div>
                                         <div className="item-actions">
                                             {org.website && <a href={org.website} target="_blank" rel="noopener noreferrer" className="action-link website-link">Visit Website</a>}
                                             <Link to={`/edit-organization/${org.id}`} className="action-link edit-link">Edit</Link>
-                                            <Link to={`/record-payment?organizationId=${org.id}&organizationName=${org.name}`} className="action-link record-link">Record Payment</Link>
                                         </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                        {hasMoreOrganizations && (
-                            <button
-                                onClick={() => setOrganizationsLimit(organizationsLimit + 10)}
-                                className="load-more-btn"
-                            >
-                                Load more...
-                            </button>
-                        )}
-                    </div>
+                                    </div>
+                                    {billsForThisOrg.length > 0 && (
+                                        <ul className="recurring-bills-sublist">
+                                            {billsForThisOrg.map(bill => (
+                                                <li key={bill.id} className="bill-item sub-item">
+                                                    <span>{bill.billName} (Typically ~{formatCurrency(bill.typicalAmount)})</span>
+                                                    <Link to={`/record-payment?organizationId=${org.id}&billId=${bill.id}`} className="action-link record-link">Record Payment</Link>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </li>
+                            );
+                        }) : <p>No billing organizations added yet.</p>}
+                    </ul>
                 )}
             </section>
 
+            {/* Recently Paid Section */}
             <section className="dashboard-section recently-paid">
-                <h3 onClick={() => setIsRecentlyPaidCollapsed(!isRecentlyPaidCollapsed)} className="collapsible-header">
-                    <FontAwesomeIcon icon={isRecentlyPaidCollapsed ? faChevronRight : faChevronDown} className="chevron-icon" />
-                    ✅ Recently Paid Bills
+                 <h3 onClick={() => setIsRecentlyPaidCollapsed(!isRecentlyPaidCollapsed)} className="collapsible-header">
+                    <FontAwesomeIcon icon={isRecentlyPaidCollapsed ? faChevronRight : faChevronDown} /> ✅ Recently Paid Bills
                 </h3>
                 {!isRecentlyPaidCollapsed && (
-                    <div className="collapsible-content">
-                        {recentlyPaidBillsToShow.length === 0 ? (
-                            <p>No recently paid bills.</p>
-                        ) : (
-                            <ul>
-                                {recentlyPaidBillsToShow.map(bill => (
-                                    <li key={bill.id} className="bill-item paid-item">
-                                        <span className="bill-org">{bill.organizationName}</span>
-                                        {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
-                                        <span> - Paid: {formatCurrency(bill.amountPaid)}</span>
-                                        <span className="paid-date"> on {formatPaidDate(bill.datePaid)}</span>
-                                        {bill.confirmationCode && <span className="confirmation-code"> (Conf: {bill.confirmationCode})</span>}
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
+                    <>
+                        <ul>
+                            {recentlyPaidBillsToShow.length > 0 ? recentlyPaidBillsToShow.map(bill => (
+                                 <li key={bill.id} className="bill-item paid-item">
+                                    <span className="bill-org">{bill.organizationName}</span>
+                                    {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
+                                    <span> - Paid: {formatCurrency(bill.amountPaid)}</span>
+                                    <span className="paid-date"> on {formatDate(bill.datePaid)}</span>
+                                </li>
+                            )) : <p>No recently paid bills.</p>}
+                        </ul>
                         {hasMorePaidBills && (
-                            <button
-                                onClick={() => setPaidBillsLimit(paidBillsLimit + 10)}
-                                className="load-more-btn"
-                            >
+                            <button onClick={() => setPaidBillsLimit(prev => prev + 10)} className="load-more-btn">
                                 Load more...
                             </button>
                         )}
-                    </div>
+                    </>
                 )}
             </section>
         </div>
@@ -220,3 +169,4 @@ function Dashboard() {
 }
 
 export default Dashboard;
+
