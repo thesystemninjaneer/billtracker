@@ -1,5 +1,6 @@
+// my-bill-tracker-frontend/src/pages/Dashboard.jsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import config from '../config.js';
 import './Dashboard.css';
@@ -8,6 +9,8 @@ import { faChevronDown, faChevronRight } from '@fortawesome/free-solid-svg-icons
 
 function Dashboard() {
     const { authAxios, isAuthenticated, loading } = useAuth();
+    const location = useLocation(); // Hook to access navigation state
+
     const [organizations, setOrganizations] = useState([]);
     const [upcomingBills, setUpcomingBills] = useState([]);
     const [recentlyPaidBills, setRecentlyPaidBills] = useState([]);
@@ -15,47 +18,52 @@ function Dashboard() {
     const [isFetching, setIsFetching] = useState(true);
     const [error, setError] = useState(null);
 
-    // State for paging/collapsing sections
-    const [paidBillsLimit, setPaidBillsLimit] = useState(10);
     const [isOrganizationsCollapsed, setIsOrganizationsCollapsed] = useState(true);
     const [isUpcomingBillsCollapsed, setIsUpcomingBillsCollapsed] = useState(false);
     const [isRecentlyPaidCollapsed, setIsRecentlyPaidCollapsed] = useState(true);
+    const [paidBillsLimit, setPaidBillsLimit] = useState(10);
+
+    // This fetchData function is now defined outside useEffect so we can call it on demand
+    const fetchData = async () => {
+        setIsFetching(true);
+        try {
+            const [orgsRes, upcomingRes, paidRes, billsRes] = await Promise.all([
+                authAxios(config.ORGANIZATION_API_BASE_URL),
+                authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/upcoming`),
+                authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/recently-paid`),
+                authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills`)
+            ]);
+            
+            if (!orgsRes.ok || !upcomingRes.ok || !paidRes.ok || !billsRes.ok) {
+                throw new Error('Failed to load all dashboard data.');
+            }
+
+            const orgsData = await orgsRes.json();
+            const upcomingData = await upcomingRes.json();
+            const paidData = await paidRes.json();
+            const billsData = await billsRes.json();
+
+            setOrganizations(orgsData);
+            setUpcomingBills(upcomingData);
+            setRecentlyPaidBills(paidData);
+            setRecurringBills(billsData);
+
+        } catch (err) {
+            setError("Failed to load dashboard data. Please try again.");
+        } finally {
+            setIsFetching(false);
+        }
+    };
 
     useEffect(() => {
         if (isAuthenticated && !loading) {
-            const fetchData = async () => {
-                setIsFetching(true);
-                try {
-                    const [orgsRes, upcomingRes, paidRes, billsRes] = await Promise.all([
-                        authAxios(config.ORGANIZATION_API_BASE_URL),
-                        authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/upcoming`),
-                        authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/recently-paid`),
-                        authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills`)
-                    ]);
-                    
-                    if (!orgsRes.ok || !upcomingRes.ok || !paidRes.ok || !billsRes.ok) {
-                        throw new Error('Failed to load all dashboard data.');
-                    }
-
-                    const orgsData = await orgsRes.json();
-                    const upcomingData = await upcomingRes.json();
-                    const paidData = await paidRes.json();
-                    const billsData = await billsRes.json();
-
-                    setOrganizations(orgsData);
-                    setUpcomingBills(upcomingData);
-                    setRecentlyPaidBills(paidData);
-                    setRecurringBills(billsData);
-
-                } catch (err) {
-                    setError("Failed to load dashboard data. Please try again.");
-                } finally {
-                    setIsFetching(false);
-                }
-            };
             fetchData();
         }
-    }, [isAuthenticated, loading, authAxios]);
+        // If we navigated here with a 'refresh' state, clear it after fetching to prevent loops
+        if (location.state?.refresh) {
+            window.history.replaceState({}, document.title)
+        }
+    }, [isAuthenticated, loading, authAxios, location.state?.refresh]); // Re-run effect if refresh state is present
 
     const formatCurrency = (amount) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
     
@@ -69,7 +77,6 @@ function Dashboard() {
         });
     };
     
-    // Sliced data for paging
     const recentlyPaidBillsToShow = recentlyPaidBills.slice(0, paidBillsLimit);
     const hasMorePaidBills = recentlyPaidBills.length > paidBillsLimit;
 
@@ -122,6 +129,7 @@ function Dashboard() {
                                             <Link to={`/edit-organization/${org.id}`} className="action-link edit-link">Edit</Link>
                                         </div>
                                     </div>
+                                    {/* Render recurring bills if they exist */}
                                     {billsForThisOrg.length > 0 && (
                                         <ul className="recurring-bills-sublist">
                                             {billsForThisOrg.map(bill => (
@@ -131,6 +139,12 @@ function Dashboard() {
                                                 </li>
                                             ))}
                                         </ul>
+                                    )}
+                                    {/* FIX: Render a generic "Record Payment" button if NO recurring bills exist for this org */}
+                                    {billsForThisOrg.length === 0 && (
+                                         <div className="ad-hoc-payment-link">
+                                            <Link to={`/record-payment?organizationId=${org.id}`} className="action-link record-link">Record Ad-Hoc Payment</Link>
+                                        </div>
                                     )}
                                 </li>
                             );
@@ -169,4 +183,3 @@ function Dashboard() {
 }
 
 export default Dashboard;
-

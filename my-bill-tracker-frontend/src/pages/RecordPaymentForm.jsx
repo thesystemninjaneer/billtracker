@@ -1,9 +1,8 @@
-// my-bill-tracker-frontend/src/pages/RecordPaymentForm.jsx
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useNotification } from '../context/NotificationContext';
-import config from '../config';
+import { useAuth } from '../context/AuthContext.jsx';
+import { useNotification } from '../context/NotificationContext.jsx';
+import config from '../config.js';
 import './Forms.css';
 
 const getNextDueDay = (day) => {
@@ -22,10 +21,10 @@ function RecordPaymentForm() {
     const navigate = useNavigate();
     const { search } = useLocation();
     const queryParams = new URLSearchParams(search);
-
+    
     const paymentId = queryParams.get('paymentId');
     const preselectedOrgId = queryParams.get('organizationId');
-    const preselectedBillId = queryParams.get('billId'); // FIX: Read billId from URL
+    const preselectedBillId = queryParams.get('billId');
 
     const isUpdateMode = !!paymentId;
 
@@ -37,7 +36,7 @@ function RecordPaymentForm() {
     
     const [formData, setFormData] = useState({
         organizationId: preselectedOrgId || '',
-        billId: preselectedBillId || '', // FIX: Initialize state with billId
+        billId: preselectedBillId || '',
         dueDate: '',
         amountDue: '',
         datePaid: new Date().toISOString().split('T')[0],
@@ -95,7 +94,6 @@ function RecordPaymentForm() {
                 const relevantBills = allBills.filter(b => b.organizationId.toString() === formData.organizationId);
                 setBillsForOrg(relevantBills);
 
-                // FIX: If a bill was pre-selected, find it and populate the form
                 if (preselectedBillId) {
                     const selectedBill = relevantBills.find(b => b.id.toString() === preselectedBillId);
                     if (selectedBill) {
@@ -103,7 +101,7 @@ function RecordPaymentForm() {
                             ...prev,
                             amountDue: selectedBill.typicalAmount || '',
                             amountPaid: selectedBill.typicalAmount || '',
-                            dueDate: selectedBill.dueDay ? getNextDueDay(selectedBill.dueDay) : '',
+                            dueDate: new Date().toISOString().split('T')[0],
                         }));
                     }
                 }
@@ -115,17 +113,29 @@ function RecordPaymentForm() {
         fetchBillsForOrg();
     }, [formData.organizationId, isUpdateMode, authAxios, preselectedBillId]);
     
-    // This effect runs when the user MANUALLY changes the dropdown
+    // FIX: This useEffect now correctly handles both selecting AND deselecting a recurring bill.
     useEffect(() => {
-        if (isUpdateMode || !formData.billId) return;
+        if (isUpdateMode) return; // This logic is only for create mode
 
         const selectedBill = billsForOrg.find(b => b.id.toString() === formData.billId);
+
         if (selectedBill) {
+            // A recurring bill IS selected, so auto-fill the form.
             setFormData(prev => ({
                 ...prev,
                 amountDue: selectedBill.typicalAmount || '',
                 amountPaid: selectedBill.typicalAmount || '',
-                dueDate: selectedBill.dueDay ? getNextDueDay(selectedBill.dueDay) : prev.dueDate,
+                dueDate: new Date().toISOString().split('T')[0],
+            }));
+        } else {
+            // No recurring bill is selected (or was deselected), so clear the fields for ad-hoc entry.
+            // We keep the organizationId as that is selected separately.
+            setFormData(prev => ({
+                ...prev,
+                billId: '',
+                amountDue: '',
+                amountPaid: '',
+                dueDate: '',
             }));
         }
     }, [formData.billId, billsForOrg, isUpdateMode]);
@@ -166,7 +176,7 @@ function RecordPaymentForm() {
                 throw new Error(errorData.message || 'Failed to record payment.');
             }
             addNotification('Payment recorded successfully!', 'success');
-            navigate('/');
+            navigate('/', { state: { refresh: true } });
         } catch (err) {
             setError(err.message);
         } finally {
@@ -226,7 +236,7 @@ function RecordPaymentForm() {
                     <textarea name="notes" value={formData.notes} onChange={handleChange} rows="3"></textarea>
                 </div>
                 <button type="submit" className="btn-primary" disabled={isSubmitting}>
-                    {isSubmitting ? 'Submitting...' : 'Save'}
+                    {isSubmitting ? 'Recording...' : 'Record Payment'}
                 </button>
             </form>
         </div>
