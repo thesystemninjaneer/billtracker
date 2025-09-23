@@ -113,26 +113,25 @@ function RecordPaymentForm() {
         fetchBillsForOrg();
     }, [formData.organizationId, isUpdateMode, authAxios, preselectedBillId]);
     
-    // FIX: This useEffect now correctly handles both selecting AND deselecting a recurring bill.
+    // This useEffect handles auto-filling the form when a recurring bill is manually selected.
     useEffect(() => {
         if (isUpdateMode) return; // This logic is only for create mode
 
         const selectedBill = billsForOrg.find(b => b.id.toString() === formData.billId);
 
         if (selectedBill) {
-            // A recurring bill IS selected, so auto-fill the form.
+            // A recurring bill is selected, so auto-fill the form.
             setFormData(prev => ({
                 ...prev,
                 amountDue: selectedBill.typicalAmount || '',
                 amountPaid: selectedBill.typicalAmount || '',
                 dueDate: new Date().toISOString().split('T')[0],
             }));
-        } else {
-            // No recurring bill is selected (or was deselected), so clear the fields for ad-hoc entry.
-            // We keep the organizationId as that is selected separately.
+        } else if (billsForOrg.length > 0) {
+            // FIX: This condition prevents clearing the form on initial load.
+            // It only runs if the bills are loaded and the user deselects to "None (Ad-Hoc)".
             setFormData(prev => ({
                 ...prev,
-                billId: '',
                 amountDue: '',
                 amountPaid: '',
                 dueDate: '',
