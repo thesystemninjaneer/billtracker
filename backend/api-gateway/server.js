@@ -4,16 +4,13 @@ const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const morgan = require('morgan');
 const cors = require('cors');
+const https = require('https'); // 1. Import the HTTPS module
+const fs = require('fs');       // 2. Import the File System module
 
 const app = express();
 
 // --- CORS Configuration ---
-
-// Read from an environment variable. The `||` provides a fallback for local development.
-const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:8080,http://localhost:5173').split(',');
-
-// robust function-based origin check.
-// This explicitly handles requests with no origin (like server-to-server, Postman)
+const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'https://localhost:8443').split(',');
 const corsOptions = {
     origin: function (origin, callback) {
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
@@ -24,54 +21,34 @@ const corsOptions = {
     },
     credentials: true,
 };
-
 app.use(cors(corsOptions));
 app.use(morgan('dev'));
 
-// --- Service Targets (from docker-compose) ---
+// --- Service Targets ---
 const USER_SERVICE_URL = 'http://user-service:3000';
 const ORGANIZATION_SERVICE_URL = 'http://organization-service:3001';
 const BILL_PAYMENT_SERVICE_URL = 'http://bill-payment-service:3002';
 const NOTIFICATION_SERVICE_URL = 'http://notification-service:3003';
+const FRONTEND_URL = 'http://bill-tracker-frontend:80'; // 3. Define the frontend service URL
 
-// --- PROXY ROUTING RULES (Specific to General) ---
-
+// --- API Proxy Routing Rules ---
 // 1. User Service (Specific Routes for /me/*)
-app.use('/api/users/me', createProxyMiddleware({
-    target: USER_SERVICE_URL,
-    changeOrigin: true,
-}));
-
+app.use('/api/users/me', createProxyMiddleware({ target: USER_SERVICE_URL, changeOrigin: true }));
 // 2. User Service (General Routes)
-app.use('/api/users', createProxyMiddleware({
-    target: USER_SERVICE_URL,
-    changeOrigin: true,
-    pathRewrite: { '^/api/users': '' },
-}));
-
+app.use('/api/users', createProxyMiddleware({ target: USER_SERVICE_URL, changeOrigin: true, pathRewrite: { '^/api/users': '' } }));
 // 3. Organization Service
-app.use('/api/organizations', createProxyMiddleware({
-    target: ORGANIZATION_SERVICE_URL,
-    changeOrigin: true,
-    pathRewrite: { '^/api': '' },
-}));
-
+app.use('/api/organizations', createProxyMiddleware({ target: ORGANIZATION_SERVICE_URL, changeOrigin: true, pathRewrite: { '^/api': '' } }));
 // 4. Bill Payment Service
-app.use(['/api/payments', '/api/bills'], createProxyMiddleware({
-    target: BILL_PAYMENT_SERVICE_URL,
-    changeOrigin: true,
-    pathRewrite: { '^/api': '' },
-}));
-
+app.use(['/api/payments', '/api/bills'], createProxyMiddleware({ target: BILL_PAYMENT_SERVICE_URL, changeOrigin: true, pathRewrite: { '^/api': '' } }));
+// 5. Notification Service
 app.use(['/api/notifications/test-slack'], createProxyMiddleware({
     target: BILL_PAYMENT_SERVICE_URL,
     changeOrigin: true,
 }));
-
-// 5. Notification Service
 app.use('/api/notifications', createProxyMiddleware({
     target: NOTIFICATION_SERVICE_URL,
     changeOrigin: true,
+    ws: true, // Enable WebSocket support for SSE
     onProxyRes: (proxyRes, req, res) => {
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
@@ -79,7 +56,24 @@ app.use('/api/notifications', createProxyMiddleware({
     },
 }));
 
-const PORT = 5000;
-app.listen(PORT, () => {
-  console.log(`API Gateway running on internal port ${PORT}`);
+// --- Frontend Proxy Rule ---
+// 4. This rule must be LAST. It catches all other requests and forwards them to the frontend.
+app.use('/', createProxyMiddleware({
+    target: FRONTEND_URL,
+    changeOrigin: true,
+}));
+
+
+// --- Server Initialization ---
+const PORT = 8443; // 5. The standard port for local HTTPS development
+
+// 6. Read the SSL certificate files
+const options = {
+    key: fs.readFileSync('./certs/key.pem'),
+    cert: fs.readFileSync('./certs/cert.pem'),
+};
+
+// 7. Create and start the HTTPS server
+https.createServer(options, app).listen(PORT, () => {
+    console.log(`API Gateway is running in HTTPS mode on port ${PORT}`);
 });

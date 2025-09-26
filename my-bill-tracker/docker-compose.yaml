@@ -30,14 +30,17 @@ services:
       dockerfile: Dockerfile
     container_name: bill-tracker-api-gateway
     ports:
-      - "5000:5000"
+      - "8443:8443"
     environment:
-      - CORS_ALLOWED_ORIGINS=http://192.168.1.100:8080 # Update with your frontend URL
+      - CORS_ALLOWED_ORIGINS=https://192.168.1.100:8443
+    volumes:
+      ../backend/api-gateway/certs:/usr/src/app/certs:z
     depends_on:
       - user-service
       - organization-service
       - bill-payment-service
       - notification-service
+      - bill-tracker-frontend
     restart: always
 
   user-service:
@@ -112,8 +115,6 @@ services:
       DB_PORT: 3306
       SERVICE_PORT: 3003
       JWT_SECRET: your_jwt_secret_key_very_long_and_random
-      FRONTEND_URL: http://localhost:8080
-      ALLOWED_ORIGIN: http://localhost:5173
       EMAIL_SERVICE_HOST: smtp.sendgrid.net
       EMAIL_SERVICE_PORT: 587
       EMAIL_SERVICE_SECURE: false
@@ -130,13 +131,9 @@ services:
       context: ../my-bill-tracker-frontend
       dockerfile: Dockerfile
     container_name: bill-tracker-frontend
-    ports:
-      - "8080:80"
     environment:
-      # This is the variable that will be injected into the frontend at runtime.
-      - API_GATEWAY_URL=http://192.168.1.100:5000 # Update with your API Gateway URL
-    depends_on:
-      - api-gateway # Frontend now depends on the gateway
+      # This URL will be used by the frontend to call the gateway itself
+      = API_GATEWAY_URL=https://192.168.1.100:8443 # Update with your API Gateway URL
 
 volumes:
   db_data:

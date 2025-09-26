@@ -9,7 +9,6 @@ const jwt = require('jsonwebtoken'); // For JWT token generation
 const app = express();
 const port = process.env.SERVICE_PORT || 3000;
 const jwtSecret = process.env.JWT_SECRET; // Your JWT secret key
-const allowedOrigins = [process.env.FRONTEND_URL, process.env.ALLOWED_ORIGIN].filter(Boolean); // Filter out undefined values
 
 app.use(express.json()); // For parsing application/json
 
