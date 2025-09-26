@@ -12,6 +12,7 @@ Key Features:
 - CORS Management: Handles all Cross-Origin Resource Sharing (CORS) logic for the entire application. This is the only place CORS needs to be configured.
 - Request Logging: Uses morgan to provide real-time logging of all incoming traffic in the console, which is invaluable for debugging.
 - Decoupling: Decouples the frontend client from the backend's internal microservice architecture. The frontend doesn't need to know how many backend services exist or what their individual addresses are.
+- SSL
 
 ## Prerequisites
 
@@ -42,14 +43,20 @@ This is the standard method for running the entire application. The gateway will
 You can run the gateway by itself, but it will only function correctly if the other backend services are also running and accessible on their respective `localhost` ports.
 
 1. Navigate to this directory: `backend/api-gateway`.
-2. Install dependencies:
+2. (OPT) Create SSL certificates (change `localhost` to your ip or hostname)
+   ```
+   $ openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 365 -nodes -subj "/CN=localhost"
+   sudo chown 1000:1000 key.pem cert.pem
+   ```
+3. Install dependencies:
    ```
     npm install
    ```
-3. Start the server:
+4. Start the server:
    ```
     npm start
    ```
+
 ## Routing Logic Explained
 
 The gateway uses a set of rules to forward requests. The order of these rules is important, as more specific rules must come before more general ones.
