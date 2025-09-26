@@ -45,8 +45,9 @@ You can run the gateway by itself, but it will only function correctly if the ot
 1. Navigate to this directory: `backend/api-gateway`.
 2. (OPT) Create SSL certificates (change `localhost` to your ip or hostname)
    ```
-   $ openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 365 -nodes -subj "/CN=localhost"
-   sudo chown 1000:1000 key.pem cert.pem
+   mkdir certs
+   openssl req -x509 -newkey rsa:4096 -keyout certs/key.pem -out certs/cert.pem -sha256 -days 365 -nodes -subj "/CN=localhost"
+   sudo chown 1000:1000 certs/key.pem certs/cert.pem
    ```
 3. Install dependencies:
    ```
