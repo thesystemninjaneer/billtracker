@@ -431,7 +431,7 @@ Here is the order to follow when building and testing individual services during
 1. [backend api-gateway (Node.js and Express)](../backend/api-gateway/README.md)
 2. [backend db](../backend/db/README.md)
 3. [backend user-service](../backend/user-service/README.md)
-   ![settings](../images/settings.png)
+   ![settings](../images/settings-1.1.0.png)
 4. [backend organization-service](../backend/organization-service/README.md)
    ![add-org](../images/add-org.png)
 5. [backend bill-payment-service](../backend/bill-payment-service/README.md)
