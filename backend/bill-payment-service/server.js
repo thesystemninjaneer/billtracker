@@ -138,7 +138,7 @@ app.get('/bills/export', authenticateToken, async (req, res) => {
  * @desc Import a list of recurring bills, skipping duplicates.
  * @access Private (requires JWT)
  */
-app.post('/bills/import', async (req, res) => {
+app.post('/bills/import', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const billsToImport = req.body;
 
