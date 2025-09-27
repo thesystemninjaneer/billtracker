@@ -93,6 +93,117 @@ const calculateNextDueDate = (dueDay, frequency) => {
 
 
 /**
+ * @route GET /bills/export
+ * @desc Export all recurring bills for the authenticated user as a JSON file.
+ * @access Private (requires JWT)
+ */
+app.get('/bills/export', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    try {
+        const [bills] = await pool.execute(
+            `SELECT 
+                o.name as organizationName,
+                b.bill_name as billName,
+                b.due_day as dueDay,
+                b.typical_amount as typicalAmount,
+                b.frequency,
+                b.notes,
+                b.is_active as isActive
+             FROM bills b
+             JOIN organizations o ON b.organization_id = o.id
+             WHERE b.user_id = ?
+             ORDER BY o.name, b.bill_name`,
+            [userId]
+        );
+
+        const exportData = bills.map(b => ({
+            organizationName: b.organizationName,
+            billName: b.billName,
+            dueDay: b.dueDay,
+            typicalAmount: b.typicalAmount,
+            frequency: b.frequency,
+            notes: b.notes || null,
+            isActive: !!b.isActive // Convert to boolean
+        }));
+
+        res.status(200).json(exportData);
+    } catch (error) {
+        console.error('Error exporting recurring bills:', error);
+        res.status(500).json({ message: 'Server error during recurring bill export.' });
+    }
+});
+
+/**
+ * @route POST /bills/import
+ * @desc Import a list of recurring bills, skipping duplicates.
+ * @access Private (requires JWT)
+ */
+app.post('/bills/import', async (req, res) => {
+    const userId = req.user.id;
+    const billsToImport = req.body;
+
+    if (!Array.isArray(billsToImport) || billsToImport.length === 0) {
+        return res.status(400).json({ message: 'Request body must be a non-empty array of bills.' });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        
+        let importedCount = 0;
+        let skippedCount = 0;
+
+        for (const bill of billsToImport) {
+            if (!bill.organizationName || !bill.billName) {
+                throw new Error(`An item in the import file is missing a required 'organizationName' or 'billName'.`);
+            }
+
+            const [orgRows] = await connection.execute('SELECT id FROM organizations WHERE user_id = ? AND name = ?', [userId, bill.organizationName]);
+            if (orgRows.length === 0) {
+                throw new Error(`Organization '${bill.organizationName}' not found. Please add it before importing its bills.`);
+            }
+            const organizationId = orgRows[0].id;
+
+            const [existingBills] = await connection.execute(
+                'SELECT id FROM bills WHERE user_id = ? AND organization_id = ? AND bill_name = ?',
+                [userId, organizationId, bill.billName]
+            );
+
+            if (existingBills.length > 0) {
+                skippedCount++;
+                continue; // Skip duplicate
+            }
+
+            await connection.execute(
+                `INSERT INTO bills (user_id, organization_id, bill_name, due_day, typical_amount, frequency, notes, is_active) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    userId, organizationId, bill.billName,
+                    bill.dueDay || null, bill.typicalAmount || null, bill.frequency || 'monthly',
+                    bill.notes || null, bill.isActive === false ? 0 : 1
+                ]
+            );
+            importedCount++;
+        }
+
+        await connection.commit();
+        
+        let finalMessage = `Import complete. Successfully imported ${importedCount} new recurring bills.`;
+        if (skippedCount > 0) {
+            finalMessage += ` Skipped ${skippedCount} duplicates that already existed.`;
+        }
+        res.status(201).json({ message: finalMessage });
+
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error importing recurring bills:', error);
+        res.status(500).json({ message: 'Failed to import recurring bills. The entire operation was rolled back.', error: error.message });
+    } finally {
+        connection.release();
+    }
+});
+
+/**
  * @route GET /payments/export
  * @desc Export payment history, excluding records that have not been paid.
  * @access Private (requires JWT)

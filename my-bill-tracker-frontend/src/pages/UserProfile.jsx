@@ -5,98 +5,95 @@ import { useNotification } from '../context/NotificationContext';
 import config from '../config';
 
 const UserProfile = () => {
-  const { token: authToken, isAuthenticated, loading: authLoading, authAxios, user: authContextUser, setUser: setAuthContextUser } = useContext(AuthContext);
-  const { addNotification } = useNotification();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [message, setMessage] = useState('');
-  
-  const orgFileInputRef = useRef(null);
-  const paymentFileInputRef = useRef(null);
+  const { token: authToken, isAuthenticated, loading: authLoading, authAxios, user: authContextUser, setUser: setAuthContextUser } = useContext(AuthContext);
+  const { addNotification } = useNotification();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [message, setMessage] = useState('');
+  
+  const orgFileInputRef = useRef(null);
+  const paymentFileInputRef = useRef(null);
+  const billFileInputRef = useRef(null); // Ref for recurring bill import
 
-  // State for forms
-  const [userProfile, setUserProfile] = useState({
-    username: '',
-    email: '',
-  });
+  // State for forms
+  const [userProfile, setUserProfile] = useState({
+    username: '',
+    email: '',
+  });
 
-  // State for Notification Settings
-  const [notificationSettings, setNotificationSettings] = useState({
-    is_email_notification_enabled: false,
-    is_slack_notification_enabled: false,
-    slack_webhook_url: '',
-    in_app_alerts_enabled: false,
-    notification_time_offsets: [],
-  });
+  // State for Notification Settings
+  const [notificationSettings, setNotificationSettings] = useState({
+    is_email_notification_enabled: false,
+    is_slack_notification_enabled: false,
+    slack_webhook_url: '',
+    in_app_alerts_enabled: false,
+    notification_time_offsets: [],
+  });
 
-  const [newOffsetInput, setNewOffsetInput] = useState('');
-  
-  // State for import/export features
-  const [organizations, setOrganizations] = useState([]);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [exportOrgId, setExportOrgId] = useState('all');
+  const [newOffsetInput, setNewOffsetInput] = useState('');
+  
+  // State for import/export features
+  const [organizations, setOrganizations] = useState([]);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportOrgId, setExportOrgId] = useState('all');
 
-  const fetchOrganizations = useCallback(async () => {
-      try {
-        const response = await authAxios(config.ORGANIZATION_API_BASE_URL);
-        if (response.ok) {
-          const data = await response.json();
-          setOrganizations(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch organizations:", error);
-      }
-  }, [authAxios]);
+  const fetchOrganizations = useCallback(async () => {
+      try {
+        const response = await authAxios(config.ORGANIZATION_API_BASE_URL);
+        if (response.ok) {
+          const data = await response.json();
+          setOrganizations(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch organizations:", error);
+      }
+  }, [authAxios]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (authLoading || !authToken) return;
-      setLoading(true);
-      setError(null);
-      try {
-        await fetchOrganizations();
+  useEffect(() => {
+    const fetchData = async () => {
+      if (authLoading || !authToken) return;
+      setLoading(true);
+      setError(null);
+      try {
+        await fetchOrganizations();
         // ... fetches for userProfile and notificationSettings are here ...
         // --- Fetch User Profile ---
-        const userProfileResponse = await authAxios(`${config.USER_API_BASE_URL}/profile`);
-
-        if (!userProfileResponse.ok) {
-          const errorData = await userProfileResponse.json();
-          throw new Error(errorData.message || 'Failed to fetch user profile');
-        }
-        const userProfileData = await userProfileResponse.json();
-        setUserProfile({
-          username: userProfileData.user.username,
-          email: userProfileData.user.email,
-        });
+        const userProfileResponse = await authAxios(`${config.USER_API_BASE_URL}/profile`);
+        if (!userProfileResponse.ok) {
+          const errorData = await userProfileResponse.json();
+          throw new Error(errorData.message || 'Failed to fetch user profile');
+        }
+        const userProfileData = await userProfileResponse.json();
+        setUserProfile({
+          username: userProfileData.user.username,
+          email: userProfileData.user.email,
+        });
 
         // --- Fetch Notification Settings ---
-        const notificationSettingsResponse = await authAxios(`${config.USER_API_BASE_URL}/me/notifications`);
-
-        if (!notificationSettingsResponse.ok) {
-          const errorData = await notificationSettingsResponse.json();
-          throw new Error(errorData.message || 'Failed to fetch notification settings');
-        }
-        const notificationSettingsData = await notificationSettingsResponse.json();
-        setNotificationSettings({
-          ...notificationSettingsData,
-          notification_time_offsets: Array.isArray(notificationSettingsData.notification_time_offsets)
-            ? notificationSettingsData.notification_time_offsets.filter(offset => offset !== 0)
+        const notificationSettingsResponse = await authAxios(`${config.USER_API_BASE_URL}/me/notifications`);
+        if (!notificationSettingsResponse.ok) {
+          const errorData = await notificationSettingsResponse.json();
+          throw new Error(errorData.message || 'Failed to fetch notification settings');
+        }
+        const notificationSettingsData = await notificationSettingsResponse.json();
+        setNotificationSettings({
+          ...notificationSettingsData,
+          notification_time_offsets: Array.isArray(notificationSettingsData.notification_time_offsets)
+            ? notificationSettingsData.notification_time_offsets.filter(offset => offset !== 0)
             : (typeof notificationSettingsData.notification_time_offsets === 'string' && notificationSettingsData.notification_time_offsets.length > 0
               ? notificationSettingsData.notification_time_offsets.split(',').map(Number).filter(offset => offset !== 0)
-              : []),
-        });
-
+            : []),
+        });
         setMessage('Settings loaded successfully.');
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [authToken, authLoading, authAxios, fetchOrganizations]);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [authToken, authLoading, authAxios, fetchOrganizations]);
 
   // --- Handlers for Organization Import/Export ---
   const handleExportOrganizations = async () => {
@@ -310,6 +307,62 @@ const UserProfile = () => {
     };
     reader.readAsText(file);
   };
+  // --- Handlers for Recurring Bill Import/Export ---
+  const handleExportRecurringBills = async () => {
+    setLoading(true);
+    try {
+        const response = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills/export`);
+        if (!response.ok) throw new Error('Failed to export recurring bills.');
+        const data = await response.json();
+        if (data.length === 0) {
+            addNotification('You have no recurring bills to export.', 'info');
+            return;
+        }
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'bill-tracker-recurring-bills.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        a.remove();
+        addNotification('Recurring bills exported successfully!', 'success');
+    } catch (err) {
+        addNotification(err.message || 'An error occurred during export.', 'error');
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleBillFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    setLoading(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const bills = JSON.parse(e.target.result);
+            const response = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills/import`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bills),
+            });
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.message || 'Failed to import recurring bills.');
+            }
+            const data = await response.json();
+            addNotification(data.message, 'success');
+        } catch (err) {
+            addNotification(err.message, 'error');
+        } finally {
+            setLoading(false);
+            if (billFileInputRef.current) billFileInputRef.current.value = '';
+        }
+    };
+    reader.readAsText(file);
+  };
+
 
   // Combined Submit Handler
   const handleSubmit = async (e) => {
@@ -360,11 +413,10 @@ const UserProfile = () => {
       return <div className="text-center p-8">Loading settings...</div>
   }
 
-
   // Render logic
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-      <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-2xl"> {/* Increased max-width for better layout */}
+      <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-2xl">
         <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">User Settings</h2>
 
         {loading && <p className="text-center text-blue-500">Loading settings...</p>}
@@ -529,7 +581,16 @@ const UserProfile = () => {
                 <input type="file" ref={orgFileInputRef} onChange={handleOrgFileChange} accept=".json" style={{ display: 'none' }} />
               </div>
             </div>
-            
+            {/* --- Recurring Bill Data Section --- */}
+            <div className="border border-gray-200 p-6 rounded-lg shadow-sm">
+                <h3 className="text-2xl font-semibold text-gray-700 mb-4">Recurring Bill Data</h3>
+                <p className="text-gray-600 mb-4">Export or import your list of defined recurring bills.</p>
+                <div className="flex items-center gap-4">
+                    <button type="button" onClick={handleExportRecurringBills} disabled={loading} className="flex-1 ...">Export Recurring Bills</button>
+                    <button type="button" onClick={() => billFileInputRef.current.click()} disabled={loading} className="flex-1 ...">Import Recurring Bills</button>
+                    <input type="file" ref={billFileInputRef} onChange={handleBillFileChange} accept=".json" style={{ display: 'none' }} />
+                </div>
+            </div>
             {/* --- Bill Payment Data Section --- */}
             <div className="border border-gray-200 p-6 rounded-lg shadow-sm">
               <h3 className="text-2xl font-semibold text-gray-700 mb-4">Bill Payment Data</h3>
