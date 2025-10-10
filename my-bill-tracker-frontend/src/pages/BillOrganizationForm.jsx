@@ -1,205 +1,236 @@
 // my-bill-tracker-frontend/src/pages/BillOrganizationForm.jsx
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import config from '../config'; // Import the config
-import './Forms.css'; // Shared styles for forms
-import { useAuth } from '../context/AuthContext'; // Import useAuth hook
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import config from '../config.js';
+import './Forms.css';
+import './Dashboard.css';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
 
-function BillOrganizationForm() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { authAxios } = useAuth(); // Get authAxios from context
- 
-  const [formData, setFormData] = useState({
-    name: '',
-    accountNumber: '',
-    typicalDueDay: '', // Day of the month, e.g., '15'
-    website: '',
-    contactInfo: '',
-  });
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchOrganization = async () => {
-      if (id) {
-        setIsEditing(true);
-        try {
-          setLoading(true);
-          setError(null);
-          // Use authAxios for authenticated GET request
-          //.const response = await fetch(`${config.ORGANIZATION_API_BASE_URL}/${id}`);
-          const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}/${id}`);
-          if (!response.ok) {
-            if (response.status === 404) {
-              throw new Error('Organization not found.');
-            }
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          const data = await response.json();
-          setFormData(data);
-        } catch (err) {
-          console.error("Failed to fetch organization:", err);
-          setError("Failed to load organization details. Please try again.");
-          navigate('/'); // Redirect on error or not found
-        } finally {
-          setLoading(false);
+// Helper function to check for similar organization names
+const getSimilarOrganization = (name, orgs) => {
+    const normalizedName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (normalizedName.length < 3) return null;
+    for (const org of orgs) {
+        if (org.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(normalizedName)) {
+            return org;
         }
-      } else {
-        setIsEditing(false);
-        setFormData({ // Reset form for new entry
-          name: '',
-          accountNumber: '',
-          typicalDueDay: '',
-          website: '',
-          contactInfo: '',
-        });
-        setLoading(false); // No loading needed for new form
-      }
+    }
+    return null;
+};
+
+function OrganizationsPage() {
+    const { id: editId } = useParams();
+    const navigate = useNavigate();
+    const { authAxios } = useAuth();
+
+    // UI State
+    const [isFormVisible, setIsFormVisible] = useState(false);
+    const [isListCollapsed, setIsListCollapsed] = useState(false);
+
+    // List State
+    const [listData, setListData] = useState({ organizations: [], totalPages: 1, currentPage: 1 });
+    const [listLoading, setListLoading] = useState(true);
+    const [listError, setListError] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    
+    // Form State
+    const [formData, setFormData] = useState({ name: '', accountNumber: '', typicalDueDay: '', website: '', contactInfo: '' });
+    const [formError, setFormError] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [allOrganizations, setAllOrganizations] = useState([]);
+    const [similarOrg, setSimilarOrg] = useState(null);
+
+    const fetchOrganizations = useCallback(async (search, page) => {
+        setListLoading(true);
+        setListError(null);
+        try {
+            const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}?search=${search}&page=${page}&limit=20`);
+            if (!response.ok) throw new Error('Failed to fetch organizations.');
+            const responseData = await response.json();
+            setListData(responseData);
+        } catch (err) {
+            setListError(err.message);
+        } finally {
+            setListLoading(false);
+        }
+    }, [authAxios]);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setCurrentPage(1);
+            fetchOrganizations(searchTerm, 1);
+        }, 500);
+        return () => clearTimeout(handler);
+    }, [searchTerm, fetchOrganizations]);
+
+    useEffect(() => {
+        fetchOrganizations(searchTerm, currentPage);
+    }, [currentPage, fetchOrganizations]);
+
+    useEffect(() => {
+        if (editId) {
+            setIsEditing(true);
+            setIsFormVisible(true);
+            setIsListCollapsed(true);
+            const fetchOrg = async () => {
+                try {
+                    const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}/${editId}`);
+                    if (!response.ok) throw new Error('Organization not found.');
+                    const data = await response.json();
+                    setFormData(data);
+                } catch (err) { setFormError(err.message); }
+            };
+            fetchOrg();
+        } else {
+            setIsEditing(false);
+        }
+    }, [editId, authAxios]);
+
+     useEffect(() => {
+        const fetchAllOrgs = async () => {
+             try {
+                const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}?limit=1000`);
+                if(response.ok) {
+                    const data = await response.json();
+                    setAllOrganizations(data.organizations);
+                }
+            } catch(err) { console.error("Could not fetch all organizations for similarity check", err); }
+        };
+        fetchAllOrgs();
+    }, [authAxios]);
+
+    const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+    const submitFormData = async () => {
+        setFormError(null);
+        setSimilarOrg(null);
+        const url = isEditing ? `${config.ORGANIZATION_API_BASE_URL}/${editId}` : config.ORGANIZATION_API_BASE_URL;
+        const method = isEditing ? 'PUT' : 'POST';
+        try {
+            const response = await authAxios(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.message || 'Failed to save organization.');
+            }
+            navigate('/organizations', { replace: true });
+            setIsFormVisible(false);
+            fetchOrganizations(searchTerm, 1); // Refresh list
+        } catch (err) {
+            setFormError(err.message);
+        }
     };
 
-    fetchOrganization();
-  }, [id, navigate, authAxios]); // Add authAxios to dependency array
-  
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (isEditing) { submitFormData(); }
+        else {
+            const foundSimilar = getSimilarOrganization(formData.name, allOrganizations);
+            if (foundSimilar) { setSimilarOrg(foundSimilar); }
+            else { submitFormData(); }
+        }
+    };
+    
+    const showAddForm = () => {
+        setIsEditing(false);
+        setIsFormVisible(true);
+        setIsListCollapsed(true);
+        setFormData({ name: '', accountNumber: '', typicalDueDay: '', website: '', contactInfo: '' });
+    };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null); // Clear previous errors
-
-    try {
-      const method = isEditing ? 'PUT' : 'POST';
-      const url = isEditing ? `${config.ORGANIZATION_API_BASE_URL}/${id}` : config.ORGANIZATION_API_BASE_URL;
-
-      // Use authAxios for authenticated POST/PUT request
-      const response = await authAxios(url, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-          // Authorization header is handled by authAxios
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-
-      alert(`Organization ${isEditing ? 'updated' : 'added'} successfully!`);
-      navigate('/');
-    } catch (err) {
-      console.error('Error submitting organization:', err);
-      setError(`Failed to ${isEditing ? 'update' : 'add'} organization: ${err.message}`);
+    const hideForm = () => {
+        setIsFormVisible(false);
+        setIsListCollapsed(false);
+        if(isEditing) navigate('/organizations', { replace: true });
     }
-  };
 
-  const handleDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete ${formData.name}?`)) {
-      return;
-    }
-    setError(null); // Clear previous errors
+    return (
+        <>
+            <div className="dashboard-container">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-3xl font-bold">Organizations</h2>
+                    {!isFormVisible && (
+                         <button onClick={showAddForm} className="action-link record-link" style={{fontSize: '1em'}}>Add New Organization</button>
+                    )}
+                </div>
 
-    try {
-      // Use authAxios for authenticated DELETE request
-      const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}/${id}`, {
-        method: 'DELETE',
-        // Authorization header is handled by authAxios
-      });
+                {isFormVisible && (
+                    <div className="form-container mb-8">
+                        <h3 className="text-2xl mb-4">{isEditing ? 'Edit Organization' : 'Add New Organization'}</h3>
+                        {formError && <p className="error-message">{formError}</p>}
+                        <form onSubmit={handleSubmit}>
+                            {/* Form fields */}
+                            <div className="form-group"><label>Organization Name:</label><input type="text" name="name" value={formData.name} onChange={handleChange} required /></div>
+                            <div className="form-group"><label>Account Number:</label><input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleChange} required /></div>
+                            <div className="form-group"><label>Typical Due Day (1-31):</label><input type="number" name="typicalDueDay" value={formData.typicalDueDay} onChange={handleChange} min="1" max="31" /></div>
+                            <div className="form-group"><label>Website (Optional):</label><input type="url" name="website" value={formData.website} onChange={handleChange} /></div>
+                            <div className="form-group"><label>Contact Info (Optional):</label><input type="text" name="contactInfo" value={formData.contactInfo} onChange={handleChange} /></div>
+                            <div className="form-actions">
+                                <button type="button" onClick={hideForm} className="btn-secondary">Cancel</button>
+                                <button type="submit" className="btn-primary">{isEditing ? 'Update' : 'Add'}</button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+                
+                <section className="dashboard-section">
+                    <h3 onClick={() => setIsListCollapsed(!isListCollapsed)} className="collapsible-header">
+                         <FontAwesomeIcon icon={isListCollapsed ? faChevronDown : faChevronUp} /> Your Organizations
+                    </h3>
+                    {!isListCollapsed && (
+                        <>
+                            <div className="mb-6 mt-4">
+                                <input type="text" placeholder="Search by name, account #, or website..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full p-3 border rounded-md" />
+                            </div>
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-
-      alert(`Organization ${formData.name} deleted successfully!`);
-      navigate('/');
-    } catch (err) {
-      console.error('Error deleting organization:', err);
-      setError(`Failed to delete organization: ${err.message}`);
-    }
-  };
-
-  if (loading && isEditing) {
-    return <div className="form-container">Loading organization details...</div>;
-  }
-
-  return (
-    <div className="form-container">
-      <h2>{isEditing ? 'Edit Bill Organization' : 'Add New Bill Organization'}</h2>
-      {error && <p className="error-message">{error}</p>}
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="name">Organization Name:</label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="accountNumber">Account Number:</label>
-          <input
-            type="text"
-            id="accountNumber"
-            name="accountNumber"
-            value={formData.accountNumber}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="typicalDueDay">Typical Due Day (1-31):</label>
-          <input
-            type="number"
-            id="typicalDueDay"
-            name="typicalDueDay"
-            value={formData.typicalDueDay}
-            onChange={handleChange}
-            min="1"
-            max="31"
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="website">Website (Optional):</label>
-          <input
-            type="url"
-            id="website"
-            name="website"
-            value={formData.website}
-            onChange={handleChange}
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="contactInfo">Contact Info (Optional):</label>
-          <input
-            type="text"
-            id="contactInfo"
-            name="contactInfo"
-            value={formData.contactInfo}
-            onChange={handleChange}
-          />
-        </div>
-        <div className="form-actions">
-          <button type="submit" className="btn-primary">
-            {isEditing ? 'Update Organization' : 'Add Organization'}
-          </button>
-          {isEditing && (
-            <button type="button" onClick={handleDelete} className="btn-danger">
-              Delete Organization
-            </button>
-          )}
-        </div>
-      </form>
-    </div>
-  );
+                            {listLoading && <p>Loading...</p>}
+                            {listError && <p className="error-message">{listError}</p>}
+                            
+                            {!listLoading && !listError && (
+                                <>
+                                    {listData.organizations.length > 0 ? (
+                                        <ul>{listData.organizations.map(org => (
+                                            <li key={org.id} className="bill-item organization-group">
+                                                <div className="flex-grow"><span className="bill-org">{org.name}</span><span> (Account: {org.accountNumber || 'N/A'})</span></div>
+                                                <div className="item-actions">
+                                                    {org.website && <a href={org.website} target="_blank" rel="noopener noreferrer" className="action-link website-link">Website</a>}
+                                                    <Link to={`/organizations/${org.id}`} className="action-link edit-link">Edit</Link>
+                                                </div>
+                                            </li>
+                                        ))}</ul>
+                                    ) : (<p>No organizations found.</p>)}
+                                    
+                                    {listData.totalPages > 1 && (
+                                        <div className="flex justify-between items-center mt-6">
+                                            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-4 py-2 bg-gray-200 rounded-md">Previous</button>
+                                            <span>Page {listData.currentPage} of {listData.totalPages}</span>
+                                            <button onClick={() => setCurrentPage(p => Math.min(listData.totalPages, p + 1))} disabled={currentPage === listData.totalPages} className="px-4 py-2 bg-gray-200 rounded-md">Next</button>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </>
+                    )}
+                </section>
+            </div>
+            {similarOrg && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 shadow-xl w-full max-w-md text-center">
+                        <h3 className="text-xl font-bold mb-4">Potential Duplicate Found</h3>
+                        <p className="mb-4 text-gray-700">The name you entered is similar to: <strong>{similarOrg.name}</strong>.</p>
+                        <p className="mb-6 text-gray-600">Are you sure you want to create a new organization?</p>
+                        <div className="flex justify-center gap-4">
+                            <button onClick={() => setSimilarOrg(null)} className="px-6 py-2 bg-gray-200 rounded-md">Cancel</button>
+                            <button onClick={submitFormData} className="px-6 py-2 bg-blue-600 text-white rounded-md">Proceed Anyway</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
 }
 
-export default BillOrganizationForm;
+export default OrganizationsPage;
+

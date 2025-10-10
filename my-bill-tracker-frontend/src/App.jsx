@@ -3,11 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Dashboard from './pages/Dashboard.jsx';
-import BillOrganizationForm from './pages/BillOrganizationForm.jsx';
+// Corrected the import name to match the exported component's new functionality
+import OrganizationsPage from './pages/BillOrganizationForm.jsx'; 
 import RecordPaymentForm from './pages/RecordPaymentForm.jsx';
 import AddBillForm from './pages/AddBillForm.jsx';
-import EditBillListPage from './pages/EditBillListPage.jsx'; // 1. Import new page
-import EditBillForm from './pages/EditBillForm.jsx';       // 2. Import new form
+import EditBillListPage from './pages/EditBillListPage.jsx';
+import EditBillForm from './pages/EditBillForm.jsx';
 import Register from './pages/Register.jsx';
 import Login from './pages/Login.jsx';
 import NotFound from './pages/NotFound.jsx';
@@ -124,76 +125,32 @@ const ProtectedRoute = ({ children }) => {
 
 // Main application content, wrapped in AuthProvider and Router
 function AppContent() {
-  return (
-    <>
-      <Header />
-      <main className="content">
-        <Routes>
-          <Route path="/register" element={<Register />} />
-          {/* FIXED: Added element={<Login />} to correctly render the Login component */}
-          <Route path="/login" element={<Login />} />
+  return (
+    <>
+      <Header />
+      <main className="content">
+        <Routes>
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
 
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/add-organization"
-            element={
-              <ProtectedRoute>
-                <BillOrganizationForm />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/edit-organization/:id"
-            element={
-              <ProtectedRoute>
-                <BillOrganizationForm />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/add-bill"
-            element={
-              <ProtectedRoute>
-                <AddBillForm />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/edit-bills" element={<ProtectedRoute><EditBillListPage /></ProtectedRoute>} />
-          <Route path="/edit-bill/:id" element={<ProtectedRoute><EditBillForm /></ProtectedRoute>} />
-          
+          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
+          {/* UPDATED: Simplified routes for Organizations, using the correct component */}
+          <Route path="/organizations" element={<ProtectedRoute><OrganizationsPage /></ProtectedRoute>} />
+          <Route path="/organizations/:id" element={<ProtectedRoute><OrganizationsPage /></ProtectedRoute>} />
 
-
-          <Route
-            path="/record-payment"
-            element={
-              <ProtectedRoute>
-                <RecordPaymentForm />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <UserProfile />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </main>
+          <Route path="/add-bill" element={<ProtectedRoute><AddBillForm /></ProtectedRoute>} />
+          <Route path="/edit-bills" element={<ProtectedRoute><EditBillListPage /></ProtectedRoute>} />
+          <Route path="/edit-bill/:id" element={<ProtectedRoute><EditBillForm /></ProtectedRoute>} />
+          <Route path="/record-payment" element={<ProtectedRoute><RecordPaymentForm /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
       <NotificationListener /> {/* NotificationListener is still here to listen for SSEs */}
       <NotificationsContainer /> {/* Render the container for stacked notifications */}
-    </>
-  );
+    </>
+  );
 }
 
 // Top-level App component wrapping everything in Router and AuthProvider
@@ -213,3 +170,4 @@ function App() {
 }
 
 export default App;
+
