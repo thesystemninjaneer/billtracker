@@ -154,7 +154,7 @@ function OrganizationsPage() {
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-3xl font-bold">Organizations</h2>
                     {!isFormVisible && (
-                         <button onClick={showAddForm} className="action-link record-link" style={{fontSize: '1em'}}>Add New Organization</button>
+                         <button onClick={showAddForm} className="action-link website-link">Add New Organization</button>
                     )}
                 </div>
 
