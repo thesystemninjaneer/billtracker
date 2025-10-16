@@ -34,7 +34,7 @@ function EditBillForm() {
 
                 const billData = await billRes.json();
                 const orgsData = await orgsRes.json();
-                console.log('Fetched organizations:', orgsData);
+                //console.log('Fetched organizations:', orgsData);
 
                 setFormData({
                     organizationId: billData.organizationId,
