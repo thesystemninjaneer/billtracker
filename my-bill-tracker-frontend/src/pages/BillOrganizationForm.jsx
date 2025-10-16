@@ -12,8 +12,10 @@ import { faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
 const getSimilarOrganization = (name, orgs) => {
     const normalizedName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
     if (normalizedName.length < 3) return null;
+
     for (const org of orgs) {
-        if (org.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(normalizedName)) {
+        const normalizedOrgName = org.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (normalizedOrgName.includes(normalizedName) || normalizedName.includes(normalizedOrgName)) {
             return org;
         }
     }
@@ -57,6 +59,19 @@ function OrganizationsPage() {
             setListLoading(false);
         }
     }, [authAxios]);
+    
+    useEffect(() => {
+        const fetchAllOrgs = async () => {
+             try {
+                const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}?limit=1000`);
+                if(response.ok) {
+                    const data = await response.json();
+                    setAllOrganizations(data.organizations);
+                }
+            } catch(err) { console.error("Could not fetch all organizations for similarity check", err); }
+        };
+        fetchAllOrgs();
+    }, [authAxios]);
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -89,19 +104,6 @@ function OrganizationsPage() {
         }
     }, [editId, authAxios]);
 
-     useEffect(() => {
-        const fetchAllOrgs = async () => {
-             try {
-                const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}?limit=1000`);
-                if(response.ok) {
-                    const data = await response.json();
-                    setAllOrganizations(data.organizations);
-                }
-            } catch(err) { console.error("Could not fetch all organizations for similarity check", err); }
-        };
-        fetchAllOrgs();
-    }, [authAxios]);
-
     const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
     const submitFormData = async () => {
@@ -117,7 +119,7 @@ function OrganizationsPage() {
             }
             navigate('/organizations', { replace: true });
             setIsFormVisible(false);
-            fetchOrganizations(searchTerm, 1); // Refresh list
+            fetchOrganizations('', 1); // Refresh list with no search term
         } catch (err) {
             setFormError(err.message);
         }

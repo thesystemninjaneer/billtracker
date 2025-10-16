@@ -1,3 +1,4 @@
+// my-bill-tracker-frontend/src/pages/RecordPaymentForm.jsx
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -49,37 +50,38 @@ function RecordPaymentForm() {
     const [error, setError] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    useEffect(() => {
-        const fetchInitialData = async () => {
-            setLoading(true);
-            try {
-                const orgsResponse = await authAxios(config.ORGANIZATION_API_BASE_URL);
-                if (!orgsResponse.ok) throw new Error('Failed to fetch organizations.');
-                const orgsData = await orgsResponse.json();
-                setOrganizations(orgsData);
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            setLoading(true);
+            try {
+                const orgsResponse = await authAxios(`${config.ORGANIZATION_API_BASE_URL}?limit=1000`);
+                if (!orgsResponse.ok) throw new Error('Failed to fetch organizations.');
+                const orgsData = await orgsResponse.json();
+                // FIX: Access the .organizations array from the response object
+                setOrganizations(orgsData.organizations || []);
 
-                if (isUpdateMode) {
-                    const paymentResponse = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/${paymentId}`);
-                    if (!paymentResponse.ok) throw new Error('Could not find the specified upcoming bill.');
-                    const paymentData = await paymentResponse.json();
-                    
-                    setFormData(prev => ({
-                        ...prev,
-                        organizationId: paymentData.organizationId,
-                        billId: paymentData.billId || '',
-                        dueDate: paymentData.dueDate ? new Date(paymentData.dueDate).toISOString().split('T')[0] : '',
-                        amountDue: paymentData.amountDue,
-                        amountPaid: paymentData.amountDue,
-                    }));
-                }
-            } catch (err) {
-                setError(err.message || 'Could not load initial data.');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchInitialData();
-    }, [authAxios, isUpdateMode, paymentId]);
+                if (isUpdateMode) {
+                    const paymentResponse = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/${paymentId}`);
+                    if (!paymentResponse.ok) throw new Error('Could not find the specified upcoming bill.');
+                    const paymentData = await paymentResponse.json();
+                    
+                    setFormData(prev => ({
+                        ...prev,
+                        organizationId: paymentData.organizationId,
+                        billId: paymentData.billId || '',
+                        dueDate: paymentData.dueDate ? new Date(paymentData.dueDate).toISOString().split('T')[0] : '',
+                        amountDue: paymentData.amountDue,
+                        amountPaid: paymentData.amountDue,
+                    }));
+                }
+            } catch (err) {
+                setError(err.message || 'Could not load initial data.');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchInitialData();
+    }, [authAxios, isUpdateMode, paymentId]);
     
     useEffect(() => {
         if (isUpdateMode || !formData.organizationId) {

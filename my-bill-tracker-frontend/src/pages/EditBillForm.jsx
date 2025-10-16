@@ -34,6 +34,7 @@ function EditBillForm() {
 
                 const billData = await billRes.json();
                 const orgsData = await orgsRes.json();
+                console.log('Fetched organizations:', orgsData);
 
                 setFormData({
                     organizationId: billData.organizationId,
@@ -44,7 +45,7 @@ function EditBillForm() {
                     notes: billData.notes || '',
                     isActive: billData.isActive !== 0, // Convert 0/1 to boolean
                 });
-                setOrganizations(orgsData);
+                setOrganizations(orgsData.organizations); // recieves an array
             } catch (err) {
                 setError(err.message);
             } finally {

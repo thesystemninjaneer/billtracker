@@ -8,48 +8,46 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 const port = process.env.SERVICE_PORT || 3001;
-const jwtSecret = process.env.JWT_SECRET; // Get JWT secret from env
+const jwtSecret = process.env.JWT_SECRET;
 
 // Middleware
 app.use(express.json());
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
 // Test DB connection (same as before)
 pool.getConnection()
-  .then(connection => {
-    console.log('Organization Service: Connected to MySQL database!');
-    connection.release();
-  })
-  .catch(err => {
-    console.error('Organization Service: Error connecting to database:', err.stack);
-    process.exit(1);
-  });
+  .then(connection => {
+    console.log('Organization Service: Connected to MySQL database!');
+    connection.release();
+  })
+  .catch(err => {
+    console.error('Organization Service: Error connecting to database:', err.stack);
+    process.exit(1);
+  });
 
 // --- JWT Authentication Middleware for Organization Service ---
 const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (token == null) return res.status(401).json({ message: 'Authentication token required.' });
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token == null) return res.status(401).json({ message: 'Authentication token required.' });
 
-  jwt.verify(token, jwtSecret, (err, user) => {
-    if (err) {
-      console.error("Organization Service JWT verification error:", err);
-      // For a production app, differentiate between malformed and expired tokens
-      return res.status(403).json({ message: 'Invalid or expired token.' });
-    }
-    req.user = user; // Attach user payload (e.g., { id: 1, username: 'testuser' }) to request
-    next();
-  });
+  jwt.verify(token, jwtSecret, (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: 'Invalid or expired token.' });
+    }
+    req.user = user;
+    next();
+  });
 };
 
 // --- Apply authentication middleware to all organization routes ---
@@ -89,74 +87,67 @@ app.post('/organizations', async (req, res) => {
 });
 
 /**
- * @route GET /organizations
- * @desc Get all billing organizations for a user
- * @access Private (requires JWT)
- */
+ * @route GET /organizations
+ * @desc Get all billing organizations for a user with search and pagination
+ * @access Private (requires JWT)
+ */
 app.get('/organizations', async (req, res) => {
     // Extract parameters from request
     const userId = req.user.id;
-    const search = req.query.search || '';
-    const pageNum = parseInt(req.query.page, 10) || 1;
-    const limitNum = parseInt(req.query.limit, 10) || 20;
+    const { search = '', page = 1, limit = 20 } = req.query;
 
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 20;
     const offset = (pageNum - 1) * limitNum;
-    const searchTerm = `%${search}%`;
 
     const connection = await pool.getConnection();
     try {
-
-        // Build base query and parameters
+        // --- Build WHERE clause and parameters dynamically and securely ---
         let whereClause = 'WHERE o.user_id = ?';
-        let searchParams = [userId];
+        let params = [userId];
 
         if (search) {
-          whereClause += ' AND (o.name LIKE ? OR o.account_number LIKE ? OR o.website LIKE ?)';
-          const searchTerm = `%${search}%`;
-          searchParams.push(searchTerm, searchTerm, searchTerm);
+            // --- Logic for when a search term IS provided ---
+            whereClause += ' AND (o.name LIKE ? OR o.account_number LIKE ? OR o.website LIKE ?)';
+            const searchTerm = `%${search}%`;
+            params.push(searchTerm, searchTerm, searchTerm);
         }
-        
-        // Count query
-        const countQuery = `
-          SELECT COUNT(DISTINCT o.id) as total
-          FROM organizations o
-          ${whereClause}
-        `;
-        const countParams = [...searchParams];
-        
-        // Data query
-        const dataQuery = `
-          SELECT o.*, MAX(p.date_paid) as lastPaid
-          FROM organizations o
-          LEFT JOIN payments p ON p.organization_id = o.id
-          WHERE o.user_id = ?
-          GROUP BY o.id
-          ORDER BY lastPaid DESC, o.name ASC
-          LIMIT ${limitNum} OFFSET ${offset}
-        `;
-        const dataParams = [userId];
 
-        //queryParams.push(limitNum, offset);
-        
-        // --- DEBUGGING LOGS ---
-        console.log('\n--- DEBUGGING SQL EXECUTION ---');
-        const placeholderCount = (dataQuery.match(/\?/g) || []).length;
-        console.log('Final SQL Query:', dataQuery.trim().replace(/\s+/g, ' '));
-        console.log('Parameters Array:', dataParams);
-        console.log('SQL Placeholder (?) Count:', placeholderCount);
-        console.log('Parameters Array Length:', dataParams.length);
-        if (placeholderCount !== dataParams.length) {
-            console.error('!!! MISMATCH DETECTED: Placeholder count does not match parameter count.');
-        }
-        console.log('-----------------------------\n');
-        // --- END DEBUGGING LOGS ---
-
-        const [countRows] = await connection.execute(countQuery, countParams);
+        // --- Count Query ---
+        const countQuery = `SELECT COUNT(*) as total FROM organizations o ${whereClause}`;
+        const [countRows] = await connection.execute(countQuery, params);
         const totalOrganizations = countRows[0].total;
         const totalPages = Math.ceil(totalOrganizations / limitNum);
 
-        const [orgRows] = await connection.execute(dataQuery, dataParams);
-        
+        // --- Data Query ---
+        const dataQuery = `
+          SELECT 
+            o.id, o.name, o.account_number AS accountNumber, o.website,
+            MAX(p.date_paid) AS lastPaid
+          FROM organizations o
+          LEFT JOIN payments p ON o.id = p.organization_id
+          ${whereClause}
+          GROUP BY o.id, o.name, o.account_number, o.website
+          ORDER BY MAX(p.date_paid) DESC, o.name ASC
+          LIMIT ? OFFSET ?
+        `;
+        // Add limit and offset to the parameters for the final data query
+        params.push(limitNum, offset);
+
+        // --- DEBUGGING LOGS ---
+        // console.log('\n--- DEBUGGING SQL EXECUTION ---');
+        // const placeholderCount = (dataQuery.match(/\?/g) || []).length;
+        // console.log('Final SQL Query:', dataQuery.trim().replace(/\s+/g, ' '));
+        // console.log('Parameters Array:', params);
+        // console.log('SQL Placeholder (?) Count:', placeholderCount);
+        // console.log('Parameters Array Length:', params.length);
+        // if (placeholderCount !== params.length) {
+        //     console.error('!!! MISMATCH DETECTED: Placeholder count does not match parameter count.');
+        // }
+        // console.log('-----------------------------\n');
+        // --- END DEBUGGING LOGS ---
+
+        const [orgRows] = await connection.query(dataQuery, params);        
         res.status(200).json({
             organizations: orgRows,
             totalPages,
@@ -352,5 +343,6 @@ app.delete('/organizations/:id', async (req, res) => {
 
 // Start the server
 app.listen(port, () => {
-  console.log(`Organization Service running on port ${port}`);
+  console.log(`Organization Service running on port ${port}`);
 });
+

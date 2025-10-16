@@ -141,7 +141,7 @@ function AppContent() {
 
           <Route path="/add-bill" element={<ProtectedRoute><AddBillForm /></ProtectedRoute>} />
           <Route path="/edit-bills" element={<ProtectedRoute><EditBillListPage /></ProtectedRoute>} />
-          <Route path="/edit-bill/:id" element={<ProtectedRoute><EditBillForm /></ProtectedRoute>} />
+          <Route path="/edit-bills/:id" element={<ProtectedRoute><EditBillForm /></ProtectedRoute>} />
           <Route path="/record-payment" element={<ProtectedRoute><RecordPaymentForm /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />

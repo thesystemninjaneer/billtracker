@@ -44,14 +44,14 @@ function EditBillListPage() {
                     <p>You have not added any recurring bills yet. <Link to="/add-bill">Add one now!</Link></p>
                 ) : (
                     <ul>
-                        {bills.map(bill => (
+                        {Array.isArray(bills) && bills.map(bill => (
                             <li key={bill.id} className="bill-item">
                                 <div>
                                     <span className="bill-org">{bill.organizationName}</span>
                                     {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
                                 </div>
                                 <div className="item-actions">
-                                    <Link to={`/edit-bill/${bill.id}`} className="action-link edit-link">Edit</Link>
+                                    <Link to={`/edit-bills/${bill.id}`} className="action-link edit-link">Edit</Link>
                                 </div>
                             </li>
                         ))}

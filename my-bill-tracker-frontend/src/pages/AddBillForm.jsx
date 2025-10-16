@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import config from '../config';
-import './Forms.css'; // Re-use existing form styles
+import './Forms.css';
 
 function AddBillForm() {
   const navigate = useNavigate();
@@ -21,35 +21,34 @@ function AddBillForm() {
   const [loadingOrgs, setLoadingOrgs] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchOrganizations = async () => {
-      try {
-        setLoadingOrgs(true);
-        setError(null);
-        // Fetch organizations to populate the dropdown
-        const response = await authAxios(config.ORGANIZATION_API_BASE_URL);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setOrganizations(data);
-      } catch (err) {
-        console.error("Failed to fetch organizations:", err);
-        setError("Failed to load organizations for bill entry. Please try again.");
-      } finally {
-        setLoadingOrgs(false);
-      }
-    };
+  useEffect(() => {
+    const fetchOrganizations = async () => {
+      try {
+        setLoadingOrgs(true);
+        setError(null);
+        const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}?limit=1000`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        // FIX: Access the .organizations array from the response object
+        setOrganizations(data.organizations || []);
+      } catch (err) {
+        console.error("Failed to fetch organizations:", err);
+        setError("Failed to load organizations. Please try again.");
+      } finally {
+        setLoadingOrgs(false);
+      }
+    };
+    fetchOrganizations();
+  }, [authAxios]);
 
-    fetchOrganizations();
-  }, [authAxios]);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
 
@@ -90,24 +89,24 @@ function AddBillForm() {
       console.error('Error adding bill entry:', err);
       setError(`Failed to add bill entry: ${err.message}`);
     }
-  };
+  };
 
-  if (loadingOrgs) {
-    return <div className="form-container">Loading organizations...</div>;
-  }
+  if (loadingOrgs) {
+    return <div className="form-container">Loading organizations...</div>;
+  }
 
-  if (organizations.length === 0 && !loadingOrgs) {
-    return (
-      <div className="form-container">
-        <p className="info-message">
-          You need to <Link to="/add-organization">add a billing organization</Link> before you can add a bill entry.
-        </p>
-      </div>
-    );
-  }
+  if (organizations.length === 0 && !loadingOrgs) {
+    return (
+      <div className="form-container">
+        <p className="info-message">
+          You need to <Link to="/organizations">add a billing organization</Link> before you can add a bill entry.
+        </p>
+      </div>
+    );
+  }
 
-  return (
-    <div className="form-container">
+  return (
+    <div className="form-container">
       <h2>Add New Recurring Bill</h2>
       {error && <p className="error-message">{error}</p>}
       <form onSubmit={handleSubmit}>
@@ -190,8 +189,9 @@ function AddBillForm() {
         </div>
         <button type="submit" className="btn-primary">Add Bill Entry</button>
       </form>
-    </div>
-  );
+    </div>
+  );
 }
 
 export default AddBillForm;
+
