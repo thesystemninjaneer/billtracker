@@ -1,6 +1,7 @@
 // my-bill-tracker-frontend/src/components/Header.jsx
 //3. A simple navigation header to move between sections.
 import React from 'react';
+import { APP_VERSION } from '../version';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -14,14 +15,13 @@ function Header() {
     <header className="header">
       <nav>
         <Link to="/" className="app-title">💰 Bill Tracker</Link>
+        <span className="version">{APP_VERSION}</span>
         <div className="nav-links">
           {isAuthenticated ? (
             <>
               <Link to="/">Dashboard</Link>
               <Link to="/organizations">Orgs</Link>
               <Link to="/bills">Bills</Link>
-              {/* <Link to="/add-bill">Add Bill</Link>
-              <Link to="/edit-bills">Edit Bills</Link> */}
               <Link to="/record-payment">Record Payment</Link>
               <span className="user-info">Hello, {user?.username}!</span>
               <Link to="/settings">Settings</Link>
