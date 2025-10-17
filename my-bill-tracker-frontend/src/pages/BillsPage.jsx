@@ -1,6 +1,6 @@
 // my-bill-tracker-frontend/src/pages/BillsPage.jsx
 // Part 1: Imports & State Setup
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import config from '../config';
@@ -8,7 +8,7 @@ import './Forms.css';
 import './Dashboard.css';
 
 function BillsPage() {
-  const { id: editId } = useParams(); // Used for editing mode
+  const { id: editId } = useParams();
   const navigate = useNavigate();
   const { authAxios } = useAuth();
 
@@ -31,23 +31,10 @@ function BillsPage() {
 
   const [showInactive, setShowInactive] = useState(false);
 
-    // Load all orgs
-  useEffect(() => {
-    const fetchOrganizations = async () => {
-      try {
-        const response = await authAxios(`${config.ORGANIZATION_API_BASE_URL}?limit=1000`);
-        const data = await response.json();
-        setOrganizations(data.organizations || []);
-      } catch (err) {
-        console.error("Failed to load organizations", err);
-      }
-    };
-    fetchOrganizations();
-  }, [authAxios]);
-
   // Part 2: Fetch Orgs, Bills & Bill by ID
   // Load all bills
-  const fetchBills = async () => {
+  const fetchBills = useCallback(async () => {
+
     try {
       setLoading(true);
       const query = showInactive ? '?includeInactive=true' : '';
@@ -59,48 +46,60 @@ function BillsPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchBills(showInactive);
   }, [authAxios, showInactive]);
 
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      setLoading(true);
+      try {
+        // Fetch organizations and bills together
+        const [orgsRes, billsRes] = await Promise.all([
+          authAxios(`${config.ORGANIZATION_API_BASE_URL}?limit=1000`),
+          authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills${showInactive ? '?includeInactive=true' : ''}`)
+        ]);
+
+        if (!orgsRes.ok || !billsRes.ok) throw new Error("Failed to load page data.");
+
+        const orgsData = await orgsRes.json();
+        const billsData = await billsRes.json();
+
+        setOrganizations(orgsData.organizations || []);
+        setBills(billsData || []);
+
+      } catch (err) {
+        console.error("Failed to fetch initial data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInitialData();
+  }, [authAxios, showInactive]);
 
   // If in edit mode, fetch that bill’s data
   useEffect(() => {
     if (editId) {
-      const fetchBill = async () => {
-        try {
-          const response = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills/${editId}`);
-          if (!response.ok) throw new Error('Failed to fetch bill for editing.');
-          const data = await response.json();
+      const billToEdit = bills.find(b => b.id.toString() === editId);
+      if (billToEdit) {
           setFormData({
-            organizationId: data.organizationId || '',
-            billName: data.billName || '',
-            dueDay: data.dueDay || '',
-            typicalAmount: data.typicalAmount || '',
-            frequency: data.frequency || 'monthly',
-            notes: data.notes || '',
-            isActive: data.isActive !== 0, // safely convert 0/1 to boolean
-         });
+            organizationId: billToEdit.organizationId || '',
+            billName: billToEdit.billName || '',
+            dueDay: billToEdit.dueDay || '',
+            typicalAmount: billToEdit.typicalAmount || '',
+            frequency: billToEdit.frequency || 'monthly',
+            notes: billToEdit.notes || '',
+            isActive: billToEdit.isActive !== 0,
+          });
           setIsFormVisible(true);
           setIsEditing(true);
-        } catch (err) {
-          console.error("Error loading bill:", err);
-          setFormError('Unable to load bill for editing.');
         }
-      };
-      fetchBill();
-    }
-  }, [editId, authAxios]);
+      }
+    }, [editId, bills]);
+
 
   // Part 3 form handlers
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handleSubmit = async (e) => {
@@ -118,41 +117,25 @@ function BillsPage() {
 
     const payload = {
       ...formData,
-      organizationId: parseInt(formData.organizationId),
-      dueDay: formData.dueDay ? parseInt(formData.dueDay) : null,
-      typicalAmount: formData.typicalAmount ? parseFloat(formData.typicalAmount) : null,
-      ...(isEditing && { isActive: formData.isActive ? 1 : 0 }) // Only include when editing
+      isActive: formData.isActive ? 1 : 0
     };
-
-    try {
-      const url = isEditing
-        ? `${config.BILL_PAYMENT_API_BASE_URL}/bills/${editId}`
-        : `${config.BILL_PAYMENT_API_BASE_URL}/bills`;
-
+      const url = isEditing ? `${config.BILL_PAYMENT_API_BASE_URL}/bills/${editId}` : `${config.BILL_PAYMENT_API_BASE_URL}/bills`;
       const method = isEditing ? 'PUT' : 'POST';
-
-      const response = await authAxios(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
+    try {
+      const response = await authAxios(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to save bill.');
       }
-
-      alert(`Bill ${isEditing ? 'updated' : 'added'} successfully!`);
-      navigate('/bills');
-      fetchBills();
+      navigate('/bills'); // Go to the clean list view
+      fetchBills(); // Refresh the list
       setIsFormVisible(false);
       setIsEditing(false);
     } catch (err) {
-      console.error("Submit error:", err);
       setFormError(err.message);
     }
   };
-
+    
   // Part 4 UI (Form + List)
    const showAddForm = () => {
     setFormData({
@@ -166,7 +149,6 @@ function BillsPage() {
     setIsFormVisible(true);
     setIsEditing(false);
   };
-
   const cancelForm = () => {
     setIsFormVisible(false);
     if (isEditing) navigate('/bills');
@@ -181,7 +163,8 @@ function BillsPage() {
         )}
       </div>
 
-      {isFormVisible && (
+      {isFormVisible ? (
+        // --- FORM VIEW ---
         <div className="form-container">
           <h3 className="text-2xl mb-4">{isEditing ? 'Edit Bill' : 'Add New Bill'}</h3>
           {formError && <p className="error-message">{formError}</p>}
@@ -229,48 +212,39 @@ function BillsPage() {
             </div>
           </form>
         </div>
-      )}
-
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
-        <label>
-            <input
-            type="checkbox"
-            checked={showInactive}
-            onChange={() => setShowInactive(prev => !prev)}
-            />
-            {' '}Show Inactive Bills
-        </label>
-      </div>
-
-
-      {!isFormVisible && (
-        <section className="dashboard-section">
-          {loading ? (
-            <p>Loading bills...</p>
-          ) : bills.length === 0 ? (
-            <p>No recurring bills yet. <button onClick={showAddForm} className="action-link">Add one now</button>.</p>
-          ) : (
-            <ul>
-              {bills.map(bill => (
+      ) : (
+        // --- LIST VIEW ---
+        <>
+          {/* FIX: checkbox to be left-justified above the list */}
+          <div className="form-group" style={{ marginBottom: '1rem', textAlign: 'left' }}>
+            <label>
+                <input type="checkbox" checked={showInactive} onChange={() => setShowInactive(prev => !prev)} />
+                {' '}Show Inactive Bills
+            </label>
+          </div>
+          <section className="dashboard-section">
+            {loading ? <p>Loading bills...</p> : bills.length === 0 ? (
+                <p>No recurring bills yet. <button onClick={showAddForm} className="action-link">Add one now</button>.</p>
+            ) : (
+              <ul>{bills.map(bill => (
                 <li key={bill.id} className="bill-item">
                     <div>
                     <span className="bill-org">{bill.organizationName}</span>
                     {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
-                    {bill.isActive === 0 && (
-                        <span style={{ color: 'red', marginLeft: '10px' }}>(Inactive)</span>
-                    )}
+                    {bill.isActive === 0 && <span style={{ color: 'red', marginLeft: '10px' }}>(Inactive)</span>}
                     </div>
                     <div className="item-actions">
-                    <Link to={`/bills/${bill.id}`} className="action-link edit-link">Edit</Link>
+                      <Link to={`/bills/${bill.id}`} className="action-link edit-link">Edit</Link>
                     </div>
                 </li>
                 ))}
-            </ul>
-          )}
-        </section>
-      )}
-    </div>
-  );
+              </ul>
+            )}
+          </section>
+        </>
+        )}
+        </div>
+    );
 }
 
 export default BillsPage;
