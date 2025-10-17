@@ -26,8 +26,10 @@ function BillsPage() {
     typicalAmount: '',
     frequency: 'monthly',
     notes: '',
+    isActive: true
   });
 
+  const [showInactive, setShowInactive] = useState(false);
 
     // Load all orgs
   useEffect(() => {
@@ -48,7 +50,8 @@ function BillsPage() {
   const fetchBills = async () => {
     try {
       setLoading(true);
-      const response = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills`);
+      const query = showInactive ? '?includeInactive=true' : '';
+      const response = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills${query}`);
       const data = await response.json();
       setBills(data || []);
     } catch (err) {
@@ -59,8 +62,9 @@ function BillsPage() {
   };
 
   useEffect(() => {
-    fetchBills();
-  }, [authAxios]);
+    fetchBills(showInactive);
+  }, [authAxios, showInactive]);
+
 
   // If in edit mode, fetch that bill’s data
   useEffect(() => {
@@ -77,7 +81,8 @@ function BillsPage() {
             typicalAmount: data.typicalAmount || '',
             frequency: data.frequency || 'monthly',
             notes: data.notes || '',
-          });
+            isActive: data.isActive !== 0, // safely convert 0/1 to boolean
+         });
           setIsFormVisible(true);
           setIsEditing(true);
         } catch (err) {
@@ -89,10 +94,13 @@ function BillsPage() {
     }
   }, [editId, authAxios]);
 
-    // Part 3 form handlers
-    const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  // Part 3 form handlers
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -113,6 +121,7 @@ function BillsPage() {
       organizationId: parseInt(formData.organizationId),
       dueDay: formData.dueDay ? parseInt(formData.dueDay) : null,
       typicalAmount: formData.typicalAmount ? parseFloat(formData.typicalAmount) : null,
+      ...(isEditing && { isActive: formData.isActive ? 1 : 0 }) // Only include when editing
     };
 
     try {
@@ -201,6 +210,19 @@ function BillsPage() {
               </select>
             </div>
             <div className="form-group"><label>Notes:</label><textarea name="notes" value={formData.notes} onChange={handleChange} rows="3" /></div>
+            {isEditing && (
+            <div className="form-group">
+                <label>
+                <input
+                    type="checkbox"
+                    name="isActive"
+                    checked={formData.isActive}
+                    onChange={handleChange}
+                />
+                {' '}This recurring bill is active
+                </label>
+            </div>
+            )}
             <div className="form-actions">
               <button type="button" className="btn-secondary" onClick={cancelForm}>Cancel</button>
               <button type="submit" className="btn-primary">{isEditing ? 'Update Bill' : 'Add Bill'}</button>
@@ -208,6 +230,18 @@ function BillsPage() {
           </form>
         </div>
       )}
+
+      <div className="form-group" style={{ marginBottom: '1rem' }}>
+        <label>
+            <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={() => setShowInactive(prev => !prev)}
+            />
+            {' '}Show Inactive Bills
+        </label>
+      </div>
+
 
       {!isFormVisible && (
         <section className="dashboard-section">
@@ -219,15 +253,18 @@ function BillsPage() {
             <ul>
               {bills.map(bill => (
                 <li key={bill.id} className="bill-item">
-                  <div>
+                    <div>
                     <span className="bill-org">{bill.organizationName}</span>
                     {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
-                  </div>
-                  <div className="item-actions">
+                    {bill.isActive === 0 && (
+                        <span style={{ color: 'red', marginLeft: '10px' }}>(Inactive)</span>
+                    )}
+                    </div>
+                    <div className="item-actions">
                     <Link to={`/bills/${bill.id}`} className="action-link edit-link">Edit</Link>
-                  </div>
+                    </div>
                 </li>
-              ))}
+                ))}
             </ul>
           )}
         </section>

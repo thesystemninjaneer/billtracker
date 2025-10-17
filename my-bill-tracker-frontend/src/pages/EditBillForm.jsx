@@ -126,6 +126,19 @@ function EditBillForm() {
                     <label>Notes:</label>
                     <textarea name="notes" value={formData.notes} onChange={handleChange} rows="3"></textarea>
                 </div>
+                {isEditing && (
+                    <div className="form-group">
+                        <label>
+                        <input
+                            type="checkbox"
+                            name="isActive"
+                            checked={formData.isActive}
+                            onChange={handleChange}
+                        />
+                        {' '}This recurring bill is active
+                        </label>
+                    </div>
+                )}
                  <div className="form-group">
                     <label>
                         <input type="checkbox" name="isActive" checked={formData.isActive} onChange={handleChange} />

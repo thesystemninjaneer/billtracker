@@ -415,23 +415,35 @@ app.post('/bills', async (req, res) => {
 
 /**
  * @route GET /bills
- * @desc Get all recurring bill entries for a user, with organization name
+ * @desc Get all recurring bill entries for a user, with organization name.
+ *       Supports ?includeInactive=true to include inactive bills.
  * @access Private
  */
 app.get('/bills', async (req, res) => {
   const user_id = req.user.id;
+  const includeInactive = req.query.includeInactive === 'true';
 
   try {
-    const [rows] = await pool.execute(
-      `SELECT b.id, b.bill_name AS billName, b.due_day AS dueDay, b.typical_amount AS typicalAmount,
-              b.frequency, b.notes, b.is_active AS isActive,
-              o.id AS organizationId, o.name AS organizationName
-        FROM bills b
-        JOIN organizations o ON b.organization_id = o.id
-        WHERE b.user_id = ? ORDER BY o.name, b.bill_name`,
-      [user_id]
-    );
+    let query = `
+      SELECT b.id, b.bill_name AS billName, b.due_day AS dueDay, b.typical_amount AS typicalAmount,
+             b.frequency, b.notes, b.is_active AS isActive,
+             o.id AS organizationId, o.name AS organizationName
+      FROM bills b
+      JOIN organizations o ON b.organization_id = o.id
+      WHERE b.user_id = ?
+    `;
+
+    const queryParams = [user_id];
+
+    if (!includeInactive) {
+      query += ` AND b.is_active = 1`;
+    }
+
+    query += ` ORDER BY o.name, b.bill_name`;
+
+    const [rows] = await pool.execute(query, queryParams);
     res.status(200).json(rows);
+
   } catch (error) {
     console.error('Error fetching bill entries:', error);
     res.status(500).json({ message: 'Server error fetching bill entries.' });
