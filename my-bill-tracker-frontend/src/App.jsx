@@ -6,9 +6,10 @@ import Dashboard from './pages/Dashboard.jsx';
 // Corrected the import name to match the exported component's new functionality
 import OrganizationsPage from './pages/BillOrganizationForm.jsx'; 
 import RecordPaymentForm from './pages/RecordPaymentForm.jsx';
-import AddBillForm from './pages/AddBillForm.jsx';
-import EditBillListPage from './pages/EditBillListPage.jsx';
-import EditBillForm from './pages/EditBillForm.jsx';
+import BillsPage from './pages/BillsPage.jsx';
+// import AddBillForm from './pages/AddBillForm.jsx';
+// import EditBillListPage from './pages/EditBillListPage.jsx';
+// import EditBillForm from './pages/EditBillForm.jsx';
 import Register from './pages/Register.jsx';
 import Login from './pages/Login.jsx';
 import NotFound from './pages/NotFound.jsx';
@@ -139,9 +140,11 @@ function AppContent() {
           <Route path="/organizations" element={<ProtectedRoute><OrganizationsPage /></ProtectedRoute>} />
           <Route path="/organizations/:id" element={<ProtectedRoute><OrganizationsPage /></ProtectedRoute>} />
 
-          <Route path="/add-bill" element={<ProtectedRoute><AddBillForm /></ProtectedRoute>} />
+          <Route path="/bills" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
+          <Route path="/bills/:id" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
+          {/*<Route path="/add-bill" element={<ProtectedRoute><AddBillForm /></ProtectedRoute>} />
           <Route path="/edit-bills" element={<ProtectedRoute><EditBillListPage /></ProtectedRoute>} />
-          <Route path="/edit-bills/:id" element={<ProtectedRoute><EditBillForm /></ProtectedRoute>} />
+          <Route path="/edit-bills/:id" element={<ProtectedRoute><EditBillForm /></ProtectedRoute>} />*/}
           <Route path="/record-payment" element={<ProtectedRoute><RecordPaymentForm /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />

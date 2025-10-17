@@ -18,10 +18,10 @@ function Header() {
           {isAuthenticated ? (
             <>
               <Link to="/">Dashboard</Link>
-              {/* UPDATED: Link text and path */}
               <Link to="/organizations">Orgs</Link>
-              <Link to="/add-bill">Add Bill</Link>
-              <Link to="/edit-bills">Edit Bills</Link>
+              <Link to="/bills">Bills</Link>
+              {/* <Link to="/add-bill">Add Bill</Link>
+              <Link to="/edit-bills">Edit Bills</Link> */}
               <Link to="/record-payment">Record Payment</Link>
               <span className="user-info">Hello, {user?.username}!</span>
               <Link to="/settings">Settings</Link>
