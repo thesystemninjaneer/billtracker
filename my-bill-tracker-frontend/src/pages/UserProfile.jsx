@@ -42,7 +42,7 @@ const UserProfile = () => {
         const response = await authAxios(config.ORGANIZATION_API_BASE_URL);
         if (response.ok) {
           const data = await response.json();
-          setOrganizations(data);
+          setOrganizations(data.organizations);
         }
       } catch (error) {
         console.error("Failed to fetch organizations:", error);

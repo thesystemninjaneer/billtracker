@@ -43,7 +43,7 @@ function Dashboard() {
             const paidData = await paidRes.json();
             const billsData = await billsRes.json();
 
-            setOrganizations(orgsData);
+            setOrganizations(orgsData.organizations);
             setUpcomingBills(upcomingData);
             setRecentlyPaidBills(paidData);
             setRecurringBills(billsData);
@@ -126,7 +126,7 @@ function Dashboard() {
                                         </div>
                                         <div className="item-actions">
                                             {org.website && <a href={org.website} target="_blank" rel="noopener noreferrer" className="action-link website-link">Visit Website</a>}
-                                            <Link to={`/edit-organization/${org.id}`} className="action-link edit-link">Edit</Link>
+                                            <Link to={`/organizations/${org.id}`} className="action-link edit-link">Edit</Link>
                                         </div>
                                     </div>
                                     {/* Render recurring bills if they exist */}

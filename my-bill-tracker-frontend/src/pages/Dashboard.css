@@ -70,6 +70,30 @@
   font-size: 1.1em;
 }
 
+/* STYLES FOR THE TRUNCATION AND TOOLTIP */
+.bill-name-truncated {
+    display: inline-block;
+    max-width: 250px; /* Adjust this value to fit your layout */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle; /* Helps align the text cleanly with adjacent elements */
+    cursor: help; /* Provides a visual cue that there's more information */
+}
+
+.recurring-bills-sublist {
+    margin-top: 10px;
+    padding-left: 20px;
+    border-left: 2px solid var(--border-color);
+}
+
+.ad-hoc-payment-link {
+    padding-top: 10px;
+    margin-top: 10px;
+    border-top: 1px dashed var(--border-color);
+    text-align: right;
+}
+
 .bill-item .bill-name {
     color: var(--text-secondary);
     font-style: italic;
