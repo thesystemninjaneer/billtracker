@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const cors = require('cors');
 const https = require('https'); // 1. Import the HTTPS module
 const fs = require('fs');       // 2. Import the File System module
+const fetch = require('node-fetch'); // ✅ Add this import
 
 const app = express();
 
@@ -23,6 +24,44 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(morgan('dev'));
+
+// ✅ --- VERSION ENDPOINT ---
+// This route fetches the latest GitHub release tag (e.g. "v1.1.0")
+let cachedVersion = null;
+let lastFetched = 0;
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+app.get('/api/version', async (req, res) => {
+    try {
+        const now = Date.now();
+
+        // ✅ Return cached version if still valid
+        if (cachedVersion && now - lastFetched < CACHE_DURATION) {
+            return res.json({ version: cachedVersion, cached: true });
+        }
+
+        const owner = process.env.GITHUB_OWNER || 'your-github-username';
+        const repo = process.env.GITHUB_REPO || 'billtracker';
+
+        // ✅ Built-in fetch (Node 18+)
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/tags`);
+        if (!response.ok) {
+            throw new Error(`GitHub API error: ${response.status}`);
+        }
+
+        const tags = await response.json();
+        const version = tags.length > 0 ? tags[0].name : 'Unknown';
+
+        // ✅ Cache it
+        cachedVersion = version;
+        lastFetched = now;
+
+        res.json({ version, cached: false });
+    } catch (error) {
+        console.error('Error fetching GitHub version:', error.message);
+        res.status(500).json({ version: 'Unavailable' });
+    }
+});
 
 // --- Service Targets ---
 const USER_SERVICE_URL = 'http://user-service:3000';

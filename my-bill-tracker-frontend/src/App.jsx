@@ -1,5 +1,5 @@
 // my-bill-tracker-frontend/src/App.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -14,6 +14,7 @@ import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { NotificationProvider, useNotification } from './context/NotificationContext.jsx';
 import config from './config';
 import './App.css';
+import Footer from './components/Footer.jsx';
 
 // Individual Toast Item Component
 const ToastItem = ({ id, message, type, onClose }) => {
@@ -122,30 +123,31 @@ const ProtectedRoute = ({ children }) => {
 
 // Main application content, wrapped in AuthProvider and Router
 function AppContent() {
-  return (
-    <>
-      <Header />
-      <main className="content">
-        <Routes>
-          <Route path="/register" element={<Register />} />
-          <Route path="/login" element={<Login />} />
+  return (
+    <>
+      <Header />
+      <main className="content">
+        <Routes>
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
 
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
-          <Route path="/organizations" element={<ProtectedRoute><OrganizationsPage /></ProtectedRoute>} />
-          <Route path="/organizations/:id" element={<ProtectedRoute><OrganizationsPage /></ProtectedRoute>} />
+          <Route path="/organizations" element={<ProtectedRoute><OrganizationsPage /></ProtectedRoute>} />
+          <Route path="/organizations/:id" element={<ProtectedRoute><OrganizationsPage /></ProtectedRoute>} />
 
           <Route path="/bills" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
           <Route path="/bills/:id" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
-          <Route path="/record-payment" element={<ProtectedRoute><RecordPaymentForm /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </main>
-      <NotificationListener /> {/* NotificationListener is still here to listen for SSEs */}
-      <NotificationsContainer /> {/* Render the container for stacked notifications */}
-    </>
-  );
+          <Route path="/record-payment" element={<ProtectedRoute><RecordPaymentForm /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
+      <NotificationListener /> {/* SSE listener */}
+      <NotificationsContainer /> {/* Toast notifications */}
+      <Footer /> {/* ✅ Footer with version + Donate link */}
+    </>
+  );
 }
 
 // Top-level App component wrapping everything in Router and AuthProvider
