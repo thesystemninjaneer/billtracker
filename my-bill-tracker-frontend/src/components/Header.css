@@ -13,13 +13,6 @@
   margin: 0 auto;
 }
 
-/* ✅ new: left group (title + version) */
-.nav-left {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
 .header .app-title {
   color: white;
   text-decoration: none;
