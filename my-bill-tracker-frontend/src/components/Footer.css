@@ -1,0 +1,42 @@
+.app-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #282c34;
+  color: #bbb;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.footer-left {
+  flex: 1;
+}
+
+.footer-right {
+  flex-shrink: 0;
+}
+
+.donate-btn {
+  background-color: #61dafb;
+  color: #282c34;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s ease;
+}
+
+.donate-btn:hover {
+  background-color: #52c0e8;
+}
+
+@media (max-width: 600px) {
+  .app-footer {
+    flex-direction: column;
+    gap: 0.3rem;
+    text-align: center;
+  }
+}
