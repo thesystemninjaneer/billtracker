@@ -8,30 +8,12 @@ import "./Header.css";
 function Header() {
   const { isAuthenticated, logout, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [version, setVersion] = useState(null);
-
-  useEffect(() => {
-    async function getVersion() {
-      try {
-        const res = await fetch("/api/version");
-        const data = await res.json();
-        setVersion(data.version);
-      } catch (err) {
-        console.error("Version fetch failed:", err);
-        setVersion("N/A");
-      }
-    }
-    getVersion();
-  }, []);
 
   return (
     <header className="header">
       <nav>
         <div className="nav-left">
           <Link to="/" className="app-title">💰 Bill Tracker</Link>
-          <span className="app-version-inline">
-            {version ? `v${version.replace(/^v/, "")}` : "…"}
-          </span>
         </div>
 
         <div className="nav-links">

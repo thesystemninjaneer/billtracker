@@ -20,14 +20,6 @@
   gap: 0.5rem;
 }
 
-/* ✅ new: small inline version next to title */
-.app-version-inline {
-  font-size: 0.8rem;
-  color: #bbb;
-  margin-left: 4px;
-  opacity: 0.8;
-}
-
 .header .app-title {
   color: white;
   text-decoration: none;

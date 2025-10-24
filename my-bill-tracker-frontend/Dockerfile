@@ -1,9 +1,6 @@
 # Stage 1: Build the React Vite application
 FROM node:22-alpine as builder
 
-# Install Git so we can get version info
-RUN apk add --no-cache git
-
 WORKDIR /app
 
 # Copy package files and install dependencies
@@ -12,10 +9,6 @@ RUN npm install
 
 # Copy the rest of the source code
 COPY . .
-
-# --- Inject version from Git tag or commit ---
-# Try to get latest tag, fallback to commit hash
-RUN echo "export const APP_VERSION = '$(git describe --tags --always)';" > src/version.js
 
 # Build the Vite app
 RUN npm run build
