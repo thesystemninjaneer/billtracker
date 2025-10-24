@@ -1,4 +1,3 @@
-
 .header {
   background-color: #282c34;
   color: white;
@@ -12,6 +11,21 @@
   align-items: center;
   max-width: 1000px;
   margin: 0 auto;
+}
+
+/* ✅ new: left group (title + version) */
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ✅ new: small inline version next to title */
+.app-version-inline {
+  font-size: 0.8rem;
+  color: #bbb;
+  margin-left: 4px;
+  opacity: 0.8;
 }
 
 .header .app-title {
@@ -30,10 +44,9 @@
 }
 
 .header .nav-links a:hover {
-  color: #61dafb; /* React blue */
+  color: #61dafb;
 }
 
-/* Afor logout button in header.jsx */
 .header .nav-links .logout-btn {
   background-color: #e74c3c;
   color: white;
@@ -54,11 +67,4 @@
   color: #a0a0a0;
   margin-left: 20px;
   font-size: 1.1em;
-}
-
-.app-version {
-  text-align: center;
-  color: #888;
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
 }

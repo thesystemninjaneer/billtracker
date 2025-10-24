@@ -27,7 +27,12 @@ function Header() {
   return (
     <header className="header">
       <nav>
-        <Link to="/" className="app-title">💰 Bill Tracker</Link>
+        <div className="nav-left">
+          <Link to="/" className="app-title">💰 Bill Tracker</Link>
+          <span className="app-version-inline">
+            {version ? `v${version.replace(/^v/, "")}` : "…"}
+          </span>
+        </div>
 
         <div className="nav-links">
           {isAuthenticated ? (
@@ -55,13 +60,6 @@ function Header() {
           </button>
         </div>
       </nav>
-
-      {/* ✅ Version display always visible */}
-      <div className="app-version">
-        <small>
-          {version ? `v${version.replace(/^v/, "")}` : "Loading version..."}
-        </small>
-      </div>
     </header>
   );
 }
