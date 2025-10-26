@@ -1,0 +1,5 @@
+#!/bin/bash
+# Desc: script to generate version.txt file based on the latest git tag or commit hash
+# Instruction: copy this script to your deploy servers .git/hooks directory
+VERSION=$(git describe --tags --always)
+echo "$VERSION" > backend/api-gateway/version.txt
