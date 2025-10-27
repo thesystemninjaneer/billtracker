@@ -28,6 +28,11 @@ The gateway is configured using environment variables, which should be set in th
 | `CORS_ALLOWED_ORIGINS` | A comma-separated list of URLs that are allowed to make requests to the API. This should be the address where your frontend is hosted. | `http://localhost:8080,http://localhost:5173` | `https://your-domain.com` |
 
 ## Running the Service
+
+### Version Feature Setup
+
+The dashboard footer now automatically shows the app’s version, powered by your local Git repository. A Git **post-commit hook** writes the latest tag or commit hash to `backend/api-gateway/version.txt`, which the API Gateway serves at `/api/version`. The frontend footer reads this value and displays it to users. To set up this feature, put the `script/post-checkout` script into the `.git/hooks` directory of the deployment host. Then run `chmod +x .git/hooks/post-commit`.
+
 ### With Docker Compose (Recommended)
 
 This is the standard method for running the entire application. The gateway will be started automatically as part of the stack.

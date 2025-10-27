@@ -31,36 +31,20 @@ let cachedVersion = null;
 let lastFetched = 0;
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 
-app.get('/api/version', async (req, res) => {
-    try {
-        const now = Date.now();
-
-        // ✅ Return cached version if still valid
-        if (cachedVersion && now - lastFetched < CACHE_DURATION) {
-            return res.json({ version: cachedVersion, cached: true });
-        }
-
-        const owner = process.env.GITHUB_OWNER || 'your-github-username';
-        const repo = process.env.GITHUB_REPO || 'billtracker';
-
-        // ✅ Built-in fetch (Node 18+)
-        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/tags`);
-        if (!response.ok) {
-            throw new Error(`GitHub API error: ${response.status}`);
-        }
-
-        const tags = await response.json();
-        const version = tags.length > 0 ? tags[0].name : 'Unknown';
-
-        // ✅ Cache it
-        cachedVersion = version;
-        lastFetched = now;
-
-        res.json({ version, cached: false });
-    } catch (error) {
-        console.error('Error fetching GitHub version:', error.message);
-        res.status(500).json({ version: 'Unavailable' });
+// --- Version Endpoint using local version file ---
+app.get("/api/version", (req, res) => {
+  try {
+    const versionPath = "./version.txt";
+    if (fs.existsSync(versionPath)) {
+      const version = fs.readFileSync(versionPath, "utf-8").trim();
+      res.json({ version });
+    } else {
+      res.status(404).json({ version: "Unknown (version.txt not found)" });
     }
+  } catch (err) {
+    console.error("Error reading version file:", err);
+    res.status(500).json({ version: "Error retrieving version" });
+  }
 });
 
 // --- Service Targets ---
