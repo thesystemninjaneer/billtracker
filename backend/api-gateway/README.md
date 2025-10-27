@@ -31,7 +31,7 @@ The gateway is configured using environment variables, which should be set in th
 
 ### Version Feature Setup
 
-The dashboard footer now automatically shows the app’s version, powered by your local Git repository. A Git **post-commit hook** writes the latest tag or commit hash to `backend/api-gateway/version.txt`, which the API Gateway serves at `/api/version`. The frontend footer reads this value and displays it to users. To set up this feature, put the `script/post-checkout.sh` script into the `.git/hooks` directory of the deployment host. Then run `chmod +x .git/hooks/post-commit`.
+The dashboard footer now automatically shows the app’s version, powered by your local Git repository. A Git **post-commit hook** writes the latest tag or commit hash to `backend/api-gateway/version.txt`, which the API Gateway serves at `/api/version`. The frontend footer reads this value and displays it to users. To set up this feature, put the `script/post-checkout` script into the `.git/hooks` directory of the deployment host. Then run `chmod +x .git/hooks/post-commit`.
 
 ### With Docker Compose (Recommended)
 
