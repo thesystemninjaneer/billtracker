@@ -109,3 +109,19 @@
   color: var(--text-secondary);
   font-style: italic;
 }
+.action-link.info-link {
+  color: #2196f3;
+  margin-left: 8px;
+}
+
+.action-link.info-link:hover {
+  text-decoration: underline;
+}
+
+.back-link {
+  color: #555;
+}
+
+.chart-container canvas {
+  max-height: 100%;
+}
