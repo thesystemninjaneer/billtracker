@@ -156,11 +156,9 @@
   }
 }
 
-.monthly-overview .chart-container {
-    height: 300px;
-    margin: 1rem 0;
-    background: #fff;
-    border-radius: 8px;
-    padding: 1rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+
+/* Ensure chart canvas inherits dark background transparency */
+.chart-container canvas {
+  background-color: transparent !important;
 }

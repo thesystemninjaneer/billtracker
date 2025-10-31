@@ -17,7 +17,57 @@ import {
     Tooltip
 } from 'chart.js';
 
-ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Legend, Tooltip);
+// Transparent background plugin (register once globally)
+const transparentBackground = {
+  id: 'transparentBackground',
+  beforeDraw(chart) {
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+    ctx.fillRect(0, 0, chart.width, chart.height);
+    ctx.restore();
+  },
+};
+
+const monthSeparatorPlugin = {
+  id: 'monthSeparators',
+  afterDraw(chart) {
+    const { ctx, scales: { x, y } } = chart;
+    const labels = chart.data.labels;
+    if (!labels || labels.length === 0) return;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+
+    for (let i = 1; i < labels.length; i++) {
+      const curr = new Date(labels[i]);
+      const prev = new Date(labels[i - 1]);
+      if (curr.getMonth() !== prev.getMonth()) {
+        const xPos = x.getPixelForValue(i);
+        ctx.beginPath();
+        ctx.moveTo(xPos, y.top);
+        ctx.lineTo(xPos, y.bottom);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  },
+};
+
+// ✅ Register all once globally
+ChartJS.register(
+  LineElement,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  Legend,
+  Tooltip,
+  transparentBackground,
+  monthSeparatorPlugin
+);
+
 
 function Dashboard() {
     const { authAxios, isAuthenticated, loading } = useAuth();
@@ -35,7 +85,7 @@ function Dashboard() {
     const [isRecentlyPaidCollapsed, setIsRecentlyPaidCollapsed] = useState(true);
     const [paidBillsLimit, setPaidBillsLimit] = useState(10);
     const [monthlyOverview, setMonthlyOverview] = useState(null);
-    const [isOverviewCollapsed, setIsOverviewCollapsed] = useState(false);
+    const [isOverviewCollapsed, setIsOverviewCollapsed] = useState(true);
 
     // This fetchData function is now defined outside useEffect so we can call it on demand
     const fetchData = async () => {
@@ -102,32 +152,6 @@ function Dashboard() {
 
     if (loading || isFetching) return <div className="dashboard-container">Loading dashboard...</div>;
     
-    const monthSeparatorPlugin = {
-        id: 'monthSeparators',
-        afterDraw(chart) {
-            const { ctx, scales: { x, y } } = chart;
-            const labels = chart.data.labels;
-            if (!labels || labels.length === 0) return;
-
-            ctx.save();
-            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-            ctx.lineWidth = 1;
-
-            for (let i = 1; i < labels.length; i++) {
-            const curr = new Date(labels[i]);
-            const prev = new Date(labels[i - 1]);
-            if (curr.getMonth() !== prev.getMonth()) {
-                const xPos = x.getPixelForValue(i);
-                ctx.beginPath();
-                ctx.moveTo(xPos, y.top);
-                ctx.lineTo(xPos, y.bottom);
-                ctx.stroke();
-            }
-            }
-            ctx.restore();
-        },
-        };
-
     return (
         <div className="dashboard-container">
             {error && <p className="error-message">{error}</p>}
@@ -147,82 +171,90 @@ function Dashboard() {
                             <p>Loading overview...</p>
                         ) : (
                             <div className="chart-container">
-                                ChartJS.register(monthSeparatorPlugin);
-
                                 <Line
                                     data={{
-                                        labels: monthlyOverview?.trend?.map(item => {
-                                        // Convert to client-local time and format as MM/DD
+                                    labels: monthlyOverview?.trend?.map(item => {
                                         const d = new Date(item.date);
                                         return d.toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' });
-                                        }) || [],
-                                        datasets: [
+                                    }) || [],
+                                    datasets: [
                                         {
-                                            label: 'Cumulative Paid',
-                                            data: monthlyOverview?.trend?.map(item => item.paid) || [],
-                                            borderColor: '#4ade80', // bright green
-                                            backgroundColor: 'rgba(74, 222, 128, 0.2)',
-                                            borderWidth: 2,
-                                            tension: 0.3,
-                                            fill: false,
+                                        label: 'Cumulative Paid',
+                                        data: monthlyOverview?.trend?.map(item => item.paid) || [],
+                                        borderColor: '#4ade80', // bright green
+                                        backgroundColor: 'rgba(74, 222, 128, 0.25)',
+                                        borderWidth: 2,
+                                        tension: 0.35,
+                                        pointRadius: 3,
+                                        pointHoverRadius: 5,
+                                        fill: false,
                                         },
                                         {
-                                            label: 'Remaining Due',
-                                            data: monthlyOverview?.trend?.map(item => item.dueRemaining) || [],
-                                            borderColor: '#fbbf24', // amber
-                                            borderDash: [5, 5],
-                                            borderWidth: 2,
-                                            tension: 0.3,
-                                            fill: false,
+                                        label: 'Remaining Due',
+                                        data: monthlyOverview?.trend?.map(item => item.dueRemaining) || [],
+                                        borderColor: '#fbbf24', // amber
+                                        backgroundColor: 'rgba(251, 191, 36, 0.25)',
+                                        borderDash: [5, 5],
+                                        borderWidth: 2,
+                                        tension: 0.35,
+                                        pointRadius: 3,
+                                        pointHoverRadius: 5,
+                                        fill: false,
                                         },
-                                        ],
+                                    ],
                                     }}
                                     options={{
                                         responsive: true,
                                         maintainAspectRatio: false,
+                                        backgroundColor: 'transparent',
                                         plugins: {
-                                        legend: {
+                                            legend: {
                                             position: 'bottom',
-                                            labels: { color: '#ccc' },
-                                        },
-                                        tooltip: {
-                                            callbacks: {
-                                            label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
+                                            labels: {
+                                                color: '#f0f0f0', // brighter for dark background
+                                                font: { size: 13, weight: '500' },
+                                                boxWidth: 14,
+                                                padding: 15,
                                             },
-                                            backgroundColor: 'rgba(30, 30, 30, 0.8)',
+                                            },
+                                            tooltip: {
+                                            backgroundColor: 'rgba(20, 20, 20, 0.95)', // near-black background
                                             titleColor: '#fff',
-                                            bodyColor: '#eee',
-                                        },
+                                            titleFont: { weight: '600', size: 14 },
+                                            bodyColor: '#e6e6e6', // softer white
+                                            bodyFont: { size: 13 },
+                                            borderColor: 'rgba(255,255,255,0.15)',
+                                            borderWidth: 1,
+                                            cornerRadius: 6,
+                                            caretPadding: 6,
+                                            callbacks: {
+                                                label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
+                                            },
+                                            },
                                         },
                                         scales: {
-                                        x: {
+                                            x: {
                                             title: { display: true, text: 'Date', color: '#ccc' },
                                             ticks: {
-                                            color: '#ccc',
-                                            autoSkip: false,
-                                            maxRotation: 0,
-                                            callback: function (value, index) {
-                                                // Show every 5th label to reduce clutter
+                                                color: '#ddd',
+                                                autoSkip: false,
+                                                maxRotation: 0,
+                                                callback: function (value, index) {
                                                 return index % 5 === 0 ? this.getLabelForValue(value) : '';
+                                                },
                                             },
-                                            },
-                                            grid: {
-                                            color: 'rgba(255,255,255,0.1)',
-                                            borderDash: [3, 3],
-                                            drawTicks: true,
-                                            },
-                                        },
-                                        y: {
-                                            title: { display: true, text: 'Amount ($)', color: '#ccc' },
-                                            ticks: { color: '#ccc' },
                                             grid: { color: 'rgba(255,255,255,0.1)', borderDash: [3, 3] },
+                                            },
+                                            y: {
+                                            title: { display: true, text: 'Amount ($)', color: '#ccc' },
+                                            ticks: { color: '#ddd' },
+                                            grid: { color: 'rgba(255,255,255,0.1)', borderDash: [3, 3] },
+                                            beginAtZero: true,
+                                            },
                                         },
-                                        },
-                                        backgroundColor: 'transparent', // ✅ fits dark mode
                                     }}
                                     height={250}
                                 />
-
                             </div>
                         )}
                     </>
