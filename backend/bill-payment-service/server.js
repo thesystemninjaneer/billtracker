@@ -617,68 +617,32 @@ app.get('/payments/organization/:orgId/timeseries', async (req, res) => {
  * @access Private
  */
 app.get('/payments/monthly-overview', authenticateToken, async (req, res) => {
-    const userId = req.user.id;
-
     try {
-        const [rows] = await pool.execute(
-            `
+        const [rows] = await pool.query(`
             SELECT 
-                DATE(p.due_date) AS dueDate,
-                DATE(p.date_paid) AS datePaid,
-                p.amount_due AS amountDue,
-                p.amount_paid AS amountPaid,
-                p.payment_status AS status
-            FROM payments p
-            WHERE p.user_id = ?
-              AND p.due_date BETWEEN DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)
-                                 AND LAST_DAY(DATE_ADD(CURDATE(), INTERVAL 1 MONTH))
-            ORDER BY p.due_date ASC
-            `,
-            [userId]
-        );
+                DATE_FORMAT(date_paid, '%Y-%m-01') AS monthStart,
+                SUM(amount_paid) AS paid,
+                SUM(amount_due) AS dueTotal
+            FROM payments
+            WHERE date_paid IS NOT NULL
+                AND date_paid >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+            GROUP BY monthStart
+            ORDER BY monthStart ASC;
+        `);
 
-        // Transform the raw data for frontend line chart
-        const data = rows.map(r => ({
-            dueDate: r.dueDate,
-            paidDate: r.datePaid,
-            amountDue: Number(r.amountDue),
-            amountPaid: r.amountPaid ? Number(r.amountPaid) : 0,
-            status: r.status
+        // Transform into consistent JSON
+        const trend = rows.map(r => ({
+        date: r.monthStart,
+        paid: Number(r.paid || 0),
+        dueRemaining: Math.max(Number(r.dueTotal || 0) - Number(r.paid || 0), 0)
         }));
 
-        // Compute aggregate projection lines
-        const totalsByDay = {};
-        data.forEach(d => {
-            const key = d.dueDate;
-            if (!totalsByDay[key]) totalsByDay[key] = { paid: 0, due: 0 };
-            if (d.status === 'paid') totalsByDay[key].paid += d.amountPaid;
-            totalsByDay[key].due += d.amountDue;
-        });
-
-        // Sort by date and compute cumulative trends
-        const sortedDates = Object.keys(totalsByDay).sort();
-        let cumulativePaid = 0;
-        let cumulativeDue = 0;
-        const trend = sortedDates.map(date => {
-            cumulativePaid += totalsByDay[date].paid;
-            cumulativeDue += totalsByDay[date].due;
-            return {
-                date,
-                paid: cumulativePaid,
-                dueRemaining: Math.max(cumulativeDue - cumulativePaid, 0)
-            };
-        });
-
-        res.status(200).json({
-            data,
-            trend
-        });
-    } catch (error) {
-        console.error('Error generating monthly overview timeseries:', error);
-        res.status(500).json({ message: 'Server error generating monthly overview.' });
+        res.json({ trend });
+    } catch (err) {
+        console.error('Error generating monthly overview timeseries:', err);
+        res.status(500).json({ error: 'Failed to fetch monthly overview', details: err.message });
     }
 });
-
 
 /**
  * @route GET /payments/export

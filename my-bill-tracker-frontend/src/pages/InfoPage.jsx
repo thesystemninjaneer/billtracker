@@ -98,7 +98,7 @@ function InfoPage() {
       if (!labels || labels.length === 0) return;
 
       ctx.save();
-      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
       ctx.lineWidth = 1;
 
       for (let i = 1; i < labels.length; i++) {
