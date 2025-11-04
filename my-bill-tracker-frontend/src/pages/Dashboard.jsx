@@ -291,10 +291,10 @@ function Dashboard() {
         <div className="dashboard-container">
             {error && <p className="error-message">{error}</p>}
 
-            {/* === Monthly Payments Trend Chart (New) === */}
+            {/* === Month Overview Chart (New) === */}
             {monthlyTrendData && (
             <section className="dashboard-section monthly-trend">
-                <h3 className="collapsible-header">📈 Payment Trend (Last, Current & Next Month)</h3>
+                <h3 className="collapsible-header">📈 Month At A Glance</h3>
                 <div className="chart-container" style={{ height: '300px', marginBottom: '20px' }}>
                 <Line
                     data={monthlyTrendData}
