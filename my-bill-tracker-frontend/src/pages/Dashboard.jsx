@@ -18,6 +18,7 @@ import {
     TimeScale
 } from 'chart.js';
 import 'chartjs-adapter-date-fns';
+import { addMonths, startOfMonth, endOfMonth, startOfWeek, addDays, format } from 'date-fns';
 
 // Transparent background plugin (register once globally)
 const transparentBackground = {
@@ -159,124 +160,195 @@ function Dashboard() {
     const hasMorePaidBills = recentlyPaidBills.length > paidBillsLimit;
 
     if (loading || isFetching) return <div className="dashboard-container">Loading dashboard...</div>;
-    
+
+    // === Payment Trend (3-month span, resets monthly, remaining trends DOWN) ===
+    const buildMonthlyTrendData = () => {
+    if (!recentlyPaidBills || !upcomingBills || !recurringBills) return null;
+
+    const now = new Date();
+    const start = startOfMonth(addMonths(now, -1));
+    const end = endOfMonth(addMonths(now, 1));
+
+    // 1️⃣ Collect all payment-like events
+    const payments = recentlyPaidBills
+        .filter(p => p.datePaid)
+        .map(p => ({
+        date: new Date(p.datePaid),
+        amount: parseFloat(p.amountPaid || 0),
+        type: 'paid',
+        }));
+
+    const dues = upcomingBills.map(p => ({
+        date: new Date(p.dueDate),
+        amount: parseFloat(p.amountDue || 0),
+        type: 'due',
+    }));
+
+    const recurring = recurringBills
+        .filter(b => b.isActive)
+        .map(b => ({
+        date: new Date(now.getFullYear(), now.getMonth() + 1, b.due_day || b.typical_due_day || 1),
+        amount: parseFloat(b.typical_amount || b.typicalAmount || 0),
+        type: 'due',
+        }));
+
+    const allEvents = [...payments, ...dues, ...recurring].sort((a, b) => a.date - b.date);
+
+    // 2️⃣ Group all dues and payments by month (YYYY-MM key)
+    const monthData = {};
+    allEvents.forEach(ev => {
+        const key = `${ev.date.getFullYear()}-${String(ev.date.getMonth() + 1).padStart(2, '0')}`;
+        if (!monthData[key]) monthData[key] = { dueTotal: 0, payments: [] };
+        if (ev.type === 'due') monthData[key].dueTotal += ev.amount;
+        if (ev.type === 'paid') monthData[key].payments.push(ev);
+    });
+
+    // 3️⃣ Build daily points across 3-month range
+    const labels = [];
+    for (let d = startOfWeek(start); d <= end; d = addDays(d, 1)) {
+        labels.push(new Date(d));
+    }
+
+    const paidSeries = [];
+    const projectedSeries = [];
+    const remainingSeries = [];
+
+    let currentMonthKey = null;
+    let dueThisMonth = 0;
+    let cumulativePaid = 0;
+
+    for (const date of labels) {
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+        // Reset at start of month
+        if (key !== currentMonthKey) {
+        currentMonthKey = key;
+        dueThisMonth = monthData[key]?.dueTotal || 0;
+        cumulativePaid = 0;
+        }
+
+        // Add payments made up to this day in current month
+        const paidSoFar =
+        (monthData[key]?.payments || [])
+            .filter(p => p.date <= date)
+            .reduce((sum, p) => sum + p.amount, 0) || 0;
+
+        cumulativePaid = paidSoFar;
+        const remaining = Math.max(dueThisMonth - cumulativePaid, 0);
+
+        // Projected includes future dues (unpaid) for current month
+        const futureDue =
+        (monthData[key]?.dueTotal || 0) -
+        (monthData[key]?.payments || []).reduce((sum, p) => sum + p.amount, 0);
+
+        const projectedPaid = cumulativePaid + futureDue;
+
+        paidSeries.push({ x: date, y: cumulativePaid });
+        projectedSeries.push({ x: date, y: projectedPaid });
+        remainingSeries.push({ x: date, y: remaining });
+    }
+
+    return {
+        labels,
+        datasets: [
+        {
+            label: 'Total Paid (Actual)',
+            data: paidSeries,
+            borderColor: '#4ade80',
+            borderWidth: 2,
+            tension: 0.35,
+            pointRadius: 0,
+            fill: false,
+        },
+        {
+            label: 'Projected Paid (Scheduled)',
+            data: projectedSeries,
+            borderColor: '#4ade80',
+            borderDash: [6, 6],
+            borderWidth: 2,
+            tension: 0.35,
+            pointRadius: 0,
+            fill: false,
+        },
+        {
+            label: 'Remaining Due',
+            data: remainingSeries,
+            borderColor: '#f87171',
+            borderDash: [4, 3],
+            borderWidth: 2,
+            tension: 0.35,
+            pointRadius: 0,
+            fill: false,
+        },
+        ],
+    };
+    };
+
+    const monthlyTrendData = buildMonthlyTrendData();
+
+
     return (
         <div className="dashboard-container">
             {error && <p className="error-message">{error}</p>}
 
-            {/* Monthly Overview Section */}
-            <section className="dashboard-section monthly-overview">
-                <h3
-                    onClick={() => setIsOverviewCollapsed(!isOverviewCollapsed)}
-                    className="collapsible-header"
-                >
-                    <FontAwesomeIcon icon={isOverviewCollapsed ? faChevronRight : faChevronDown} /> 📊 Monthly Payments Overview
-                </h3>
-
-                {!isOverviewCollapsed && (
-                    <>
-                        {!monthlyOverview ? (
-                            <p>Loading overview...</p>
-                        ) : (
-                            <div className="chart-container">
-                                <Line
-                                    data={{
-                                        labels: monthlyOverview?.trend?.map(item => item.date) || [],
-                                        datasets: [
-                                            {
-                                                label: 'Cumulative Paid',
-                                                data: monthlyOverview?.trend?.map(item => ({
-                                                x: item.date,
-                                                y: item.paid,
-                                                })),
-                                                borderColor: '#4ade80',
-                                                backgroundColor: 'rgba(74, 222, 128, 0.25)',
-                                                borderWidth: 2,
-                                                tension: 0.35,
-                                                pointRadius: 3,
-                                                pointHoverRadius: 5,
-                                                fill: false,
-                                            },
-                                            {
-                                                label: 'Remaining Due',
-                                                data: monthlyOverview?.trend?.map(item => ({
-                                                x: item.date,
-                                                y: item.dueRemaining,
-                                                })),
-                                                borderColor: '#fbbf24',
-                                                backgroundColor: 'rgba(251, 191, 36, 0.25)',
-                                                borderDash: [5, 5],
-                                                borderWidth: 2,
-                                                tension: 0.35,
-                                                pointRadius: 3,
-                                                pointHoverRadius: 5,
-                                                fill: false,
-                                            },
-                                        ],
-                                    }}
-                                    options={{
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        backgroundColor: 'transparent',
-                                        plugins: {
-                                            legend: {
-                                            position: 'bottom',
-                                            labels: {
-                                                color: '#f0f0f0', // brighter for dark background
-                                                font: { size: 13, weight: '500' },
-                                                boxWidth: 14,
-                                                padding: 15,
-                                            },
-                                            },
-                                            tooltip: {
-                                            backgroundColor: 'rgba(20, 20, 20, 0.95)', // near-black background
-                                            titleColor: '#fff',
-                                            titleFont: { weight: '600', size: 14 },
-                                            bodyColor: '#e6e6e6', // softer white
-                                            bodyFont: { size: 13 },
-                                            borderColor: 'rgba(255,255,255,0.15)',
-                                            borderWidth: 1,
-                                            cornerRadius: 6,
-                                            caretPadding: 6,
-                                            callbacks: {
-                                                label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
-                                            },
-                                            },
-                                        },
-                                        scales: {
-                                            x: {
-                                                type: 'time',
-                                                time: {
-                                                    unit: 'day', // you can also use 'month' for a cleaner view
-                                                    tooltipFormat: 'MM/dd/yyyy',
-                                                    displayFormats: {
-                                                    day: 'MM/dd',
-                                                    month: 'MM/yyyy'
-                                                    }
-                                                },
-                                                title: { display: true, text: 'Date', color: '#ccc' },
-                                                ticks: {
-                                                    color: '#ddd',
-                                                    maxRotation: 0,
-                                                    autoSkip: true,
-                                                },
-                                                grid: { color: 'rgba(255,255,255,0.1)', borderDash: [3, 3] },
-                                                },
-                                            y: {
-                                                title: { display: true, text: 'Amount ($)', color: '#ccc' },
-                                                ticks: { color: '#ddd' },
-                                                grid: { color: 'rgba(255,255,255,0.1)', borderDash: [3, 3] },
-                                                beginAtZero: true,
-                                            },
-                                        },
-                                    }}
-                                    height={250}
-                                />
-                            </div>
-                        )}
-                    </>
-                )}
+            {/* === Monthly Payments Trend Chart (New) === */}
+            {monthlyTrendData && (
+            <section className="dashboard-section monthly-trend">
+                <h3 className="collapsible-header">📈 Payment Trend (Last, Current & Next Month)</h3>
+                <div className="chart-container" style={{ height: '300px', marginBottom: '20px' }}>
+                <Line
+                    data={monthlyTrendData}
+                    options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    backgroundColor: 'transparent',
+                    plugins: {
+                        legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#eee',
+                            font: { size: 13, weight: '500' },
+                        },
+                        },
+                        tooltip: {
+                        callbacks: {
+                            label: (ctx) =>
+                            `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
+                        },
+                        },
+                    },
+                    scales: {
+                        x: {
+                        type: 'time',
+                        time: {
+                            unit: 'week',
+                            displayFormats: { week: 'MM/dd' },
+                        },
+                        ticks: {
+                            color: '#ddd',
+                            maxRotation: 0,
+                            autoSkip: true,
+                            major: { enabled: true },
+                        },
+                        grid: {
+                            color: 'rgba(255,255,255,0.05)',
+                        },
+                        title: { display: true, text: 'Date', color: '#bbb' },
+                        },
+                        y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Amount ($)', color: '#bbb' },
+                        ticks: { color: '#ddd' },
+                        grid: { color: 'rgba(255,255,255,0.08)' },
+                        },
+                    },
+                    }}
+                    height={250}
+                />
+                </div>
             </section>
+            )}
+
 
 
             {/* Upcoming Bills Section */}

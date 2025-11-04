@@ -162,3 +162,10 @@
 .chart-container canvas {
   background-color: transparent !important;
 }
+
+.dashboard-section.monthly-trend {
+  background: transparent;
+  padding: 15px 20px;
+  margin-bottom: 25px;
+  border-radius: 8px;
+}
