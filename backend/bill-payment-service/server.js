@@ -612,36 +612,82 @@ app.get('/payments/organization/:orgId/timeseries', async (req, res) => {
 
 /**
  * @route GET /payments/monthly-overview
- * @desc Show all payments made or due for the last, current, and next month,
- *       including total paid and projected total lines.
+ * @desc Show all payments made or due for each day in a given month
+ *       (YYYY-MM), defaulting  to the current month if unspecified.
  * @access Private
  */
+// Ex:
+// Request: GET /payments/monthly-overview?month=2025-11
+// Response:
+// {
+//   "month": "2025-11",
+//   "labels": [ "2025-11-01", "2025-11-02", "2025-11-03", "...", "2025-11-30" ],
+//   "paid": [120, 0, 80, 0, 50, 0, ...],
+//   "due": [200, 100, 0, 50, 0, 0, ...]
+// }
 app.get('/payments/monthly-overview', authenticateToken, async (req, res) => {
-    try {
-        const [rows] = await pool.query(`
-            SELECT 
-                DATE_FORMAT(date_paid, '%Y-%m-01') AS monthStart,
-                SUM(amount_paid) AS paid,
-                SUM(amount_due) AS dueTotal
-            FROM payments
-            WHERE date_paid IS NOT NULL
-                AND date_paid >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-            GROUP BY monthStart
-            ORDER BY monthStart ASC;
-        `);
+  try {
+    // 1️⃣ Determine which month to analyze
+    const { month } = req.query; // Expected format: YYYY-MM (optional)
+    const now = new Date();
 
-        // Transform into consistent JSON
-        const trend = rows.map(r => ({
-        date: r.monthStart,
-        paid: Number(r.paid || 0),
-        dueRemaining: Math.max(Number(r.dueTotal || 0) - Number(r.paid || 0), 0)
-        }));
+    const targetMonth = month
+      ? new Date(`${month}-01`)
+      : new Date(now.getFullYear(), now.getMonth(), 1);
 
-        res.json({ trend });
-    } catch (err) {
-        console.error('Error generating monthly overview timeseries:', err);
-        res.status(500).json({ error: 'Failed to fetch monthly overview', details: err.message });
-    }
+    const year = targetMonth.getFullYear();
+    const monthIndex = targetMonth.getMonth() + 1; // MySQL months are 1-based
+
+    // 2️⃣ Query daily totals for the selected month
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        DATE(COALESCE(date_paid, due_date)) AS day,
+        SUM(CASE WHEN date_paid IS NOT NULL THEN amount_paid ELSE 0 END) AS paidTotal,
+        SUM(CASE WHEN due_date IS NOT NULL THEN amount_due ELSE 0 END) AS dueTotal
+      FROM payments
+      WHERE 
+        (
+          (MONTH(date_paid) = ? AND YEAR(date_paid) = ?)
+          OR (MONTH(due_date) = ? AND YEAR(due_date) = ?)
+        )
+      GROUP BY day
+      ORDER BY day;
+      `,
+      [monthIndex, year, monthIndex, year]
+    );
+
+    // 3️⃣ Build a complete list of all days in that month
+    const daysInMonth = new Date(year, monthIndex, 0).getDate();
+    const paid = Array(daysInMonth).fill(0);
+    const due = Array(daysInMonth).fill(0);
+    const labels = Array.from({ length: daysInMonth }, (_, i) =>
+      `${year}-${String(monthIndex).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`
+    );
+
+    // 4️⃣ Fill in values for days that exist in query results
+    rows.forEach(r => {
+      const d = new Date(r.day);
+      const dayIndex = d.getDate() - 1;
+      paid[dayIndex] = Number(r.paidTotal || 0);
+      due[dayIndex] = Number(r.dueTotal || 0);
+    });
+
+    // 5️⃣ Return consistent JSON
+    res.json({
+      month: `${year}-${String(monthIndex).padStart(2, '0')}`,
+      labels,
+      paid,
+      due
+    });
+
+  } catch (err) {
+    console.error('Error generating monthly overview:', err);
+    res.status(500).json({
+      error: 'Failed to fetch monthly overview',
+      details: err.message
+    });
+  }
 });
 
 /**
