@@ -685,8 +685,6 @@ app.get('/payments/monthly-overview', authenticateToken, async (req, res) => {
       `${year}-${String(monthIndex).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`
     );
 
-    console.log('monthly-overview rows:', rows);    
-
     // 5. Fill in values for days that exist in query results
     rows.forEach(r => {
       const dateStr = new Date(r.event_date).toISOString().split('T')[0];

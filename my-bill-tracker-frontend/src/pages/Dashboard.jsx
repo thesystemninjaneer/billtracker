@@ -16,6 +16,7 @@ import {
     Legend,
     Tooltip,
     TimeScale,
+    BarController, // Added BarController for the 'bar' type in lollipop
     ScatterController
 } from 'chart.js';
 import 'chartjs-adapter-date-fns';
@@ -23,55 +24,61 @@ import { addMonths, startOfMonth, endOfMonth, startOfWeek, addDays, format } fro
 
 // Transparent background plugin (register once globally)
 const transparentBackground = {
-  id: 'transparentBackground',
-  beforeDraw(chart) {
-    const ctx = chart.ctx;
-    ctx.save();
-    ctx.globalCompositeOperation = 'destination-over';
-    ctx.fillStyle = 'rgba(0, 0, 0, 0)';
-    ctx.fillRect(0, 0, chart.width, chart.height);
-    ctx.restore();
-  },
+    id: 'transparentBackground',
+    beforeDraw(chart) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-over';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+        ctx.fillRect(0, 0, chart.width, chart.height);
+        ctx.restore();
+    },
 };
 
 const monthSeparatorPlugin = {
-  id: 'monthSeparators',
-  afterDraw(chart) {
-    const { ctx, scales: { x, y } } = chart;
-    const labels = chart.data.labels;
-    if (!labels || labels.length === 0) return;
+    id: 'monthSeparators',
+    afterDraw(chart) {
+        const { ctx, scales: { x, y } } = chart;
+        const labels = chart.data.labels;
+        if (!labels || labels.length === 0) return;
 
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-    ctx.lineWidth = 1;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 1;
 
-    for (let i = 1; i < labels.length; i++) {
-      const curr = new Date(labels[i]);
-      const prev = new Date(labels[i - 1]);
-      if (curr.getMonth() !== prev.getMonth()) {
-        const xPos = x.getPixelForValue(curr);
-        ctx.beginPath();
-        ctx.moveTo(xPos, y.top);
-        ctx.lineTo(xPos, y.bottom);
-        ctx.stroke();
-      }
-    }
-    ctx.restore();
-  },
+        // Iterate through all data points
+        for (let i = 1; i < labels.length; i++) {
+            const curr = new Date(labels[i]);
+            const prev = new Date(labels[i - 1]);
+            
+            // Check if the month has changed (using UTC methods for consistency with TimeScale)
+            if (curr.getUTCFullYear() !== prev.getUTCFullYear() || curr.getUTCMonth() !== prev.getUTCMonth()) {
+                // Get the pixel position for the start of the current month
+                const xPos = x.getPixelForValue(curr);
+                
+                ctx.beginPath();
+                ctx.moveTo(xPos, y.top);
+                ctx.lineTo(xPos, y.bottom);
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    },
 };
 
 // ✅ Register all once globally
 ChartJS.register(
-  LineElement,
-  ScatterController,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  Legend,
-  Tooltip,
-  TimeScale,
-  transparentBackground,
-  monthSeparatorPlugin
+    LineElement,
+    BarController,
+    ScatterController,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    Legend,
+    Tooltip,
+    TimeScale,
+    transparentBackground,
+    monthSeparatorPlugin
 );
 
 
@@ -91,7 +98,7 @@ function Dashboard() {
     const [isRecentlyPaidCollapsed, setIsRecentlyPaidCollapsed] = useState(true);
     const [paidBillsLimit, setPaidBillsLimit] = useState(10);
     const [monthlyOverview, setMonthlyOverview] = useState(null);
-    const [isOverviewCollapsed, setIsOverviewCollapsed] = useState(true);
+    // isOverviewCollapsed state is no longer used for the chart section
 
     // This fetchData function is now defined outside useEffect so we can call it on demand
     const fetchData = async () => {
@@ -105,23 +112,23 @@ function Dashboard() {
                 authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills`)
             ]);
 
-            if (!orgsRes.ok || !upcomingRes.ok || !paidRes.ok || !billsRes.ok) {
-                throw new Error('Failed to load all dashboard data.');
+            // Assuming authAxios handles non-200 responses and errors internally
+            // Simplified check based on original pattern:
+            if (!overviewRes.ok) { 
+                throw new Error('Failed to load dashboard data.');
             }
-
+            
             const orgsData = await orgsRes.json();
             const upcomingData = await upcomingRes.json();
             const paidData = await paidRes.json();
             const billsData = await billsRes.json();
-            
-            if (!overviewRes.ok) throw new Error('Failed to load monthly overview data');
             const overviewData = await overviewRes.json();
 
             setOrganizations(orgsData.organizations || []);
             setUpcomingBills(upcomingData || []);
             setRecentlyPaidBills(paidData || []);
             setRecurringBills(billsData || []);
-            setMonthlyOverview(overviewData); // <-- direct assignment
+            setMonthlyOverview(overviewData);
 
         } catch (err) {
             console.error(err);
@@ -158,30 +165,32 @@ function Dashboard() {
 
     if (loading || isFetching) return <div className="dashboard-container">Loading dashboard...</div>;
 
-    // === Months Overview ===
+    // === Months Overview Data Builder ===
     const buildMonthlyTrendData = () => {
         if (!monthlyOverview) return null;
 
         const { labels, paid, due } = monthlyOverview;
 
+        // Ensure dates are parsed correctly
         const dates = labels.map(date => new Date(date));
 
         return {
             labels: dates,
             datasets: [
-                // === Lollipop stems for Total Paid ===
+                // === 1. Total Paid (Stem) - Green ===
                 {
                     label: 'Total Paid (Stem)',
                     type: 'bar',
                     data: paid,
-                    backgroundColor: '#4ade80',
-                    barPercentage: 0.05, // very thin vertical lines
+                    backgroundColor: '#4ade80', // Green
+                    barPercentage: 0.05,
                     categoryPercentage: 1,
                     borderRadius: 0,
+                    pointStyle: false,
                 },
-                // === Circles on top of stems ===
+                // === 2. Total Paid (Circle) - Green ===
                 {
-                    label: 'Total Paid (Circle)',
+                    label: 'Total Paid', 
                     type: 'scatter',
                     data: dates.map((d, i) => ({ x: d, y: paid[i] })),
                     backgroundColor: '#4ade80',
@@ -189,16 +198,26 @@ function Dashboard() {
                     pointStyle: 'circle',
                     radius: 5,
                 },
-                // === Total Due as regular filled line ===
+                // === 3. Total Due (Stem) - Red ===
                 {
-                    label: 'Total Due',
+                    label: 'Total Due (Stem)',
+                    type: 'bar',
                     data: due,
+                    backgroundColor: '#f87171', // Red
+                    barPercentage: 0.05,
+                    categoryPercentage: 1,
+                    borderRadius: 0,
+                    pointStyle: false,
+                },
+                // === 4. Total Due (Circle) - Red ===
+                {
+                    label: 'Total Due', 
+                    type: 'scatter',
+                    data: dates.map((d, i) => ({ x: d, y: due[i] })),
+                    backgroundColor: '#f87171',
                     borderColor: '#f87171',
-                    backgroundColor: 'rgba(248, 113, 113, 0.1)',
-                    fill: true,
-                    tension: 0.35,
-                    borderWidth: 2,
-                    pointRadius: 0,
+                    pointStyle: 'circle',
+                    radius: 5,
                 }
             ],
         };
@@ -212,29 +231,56 @@ function Dashboard() {
             {error && <p className="error-message">{error}</p>}
 
             {/* === Month Overview Chart (New) === */}
-            {monthlyOverview && (
+            {monthlyOverview && monthlyTrendData && (
                 <section className="dashboard-section monthly-trend">
                     <h3 className="collapsible-header">📊 Month At A Glance</h3>
                     <div className="chart-container" style={{ height: '300px', marginBottom: '20px' }}>
                         <Line
-                            data={buildMonthlyTrendData()}
+                            data={monthlyTrendData}
                             options={{
                                 responsive: true,
                                 maintainAspectRatio: false,
                                 plugins: {
-                                    legend: { position: 'bottom', labels: { color: '#eee', font: { size: 13, weight: '500' } } },
                                     tooltip: {
                                         callbacks: {
-                                            label: (ctx) => `${ctx.dataset.label.replace(' (Stem)', '')}: ${formatCurrency(ctx.parsed.y)}`,
+                                            // Ensure both stem and circle tooltip labels are neat
+                                            label: (ctx) => {
+                                                const label = ctx.dataset.label.replace(' (Stem)', '');
+                                                return `${label}: ${formatCurrency(ctx.parsed.y)}`;
+                                            },
                                         },
+                                    },
+                                    legend: { 
+                                        position: 'bottom', 
+                                        labels: { 
+                                            color: '#eee', 
+                                            font: { size: 13, weight: '500' },
+                                            // Filter out all (Stem) datasets from the legend
+                                            filter: (item) => !item.text.includes('(Stem)')
+                                        } 
                                     },
                                 },
                                 scales: {
-                                    x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'MM/dd' } }, ticks: { color: '#ddd' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                                    y: { beginAtZero: true, title: { display: true, text: 'Amount ($)', color: '#bbb' }, ticks: { color: '#ddd' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                                    x: { 
+                                        type: 'time', 
+                                        time: { 
+                                            unit: 'day', // Reverted back to day unit for detailed view
+                                            displayFormats: { 
+                                                day: 'MM/dd' // Original display format
+                                            },
+                                            tooltipFormat: 'MMM dd, yyyy'
+                                        }, 
+                                        ticks: { color: '#ddd' }, 
+                                        grid: { color: 'rgba(255,255,255,0.05)' } 
+                                    },
+                                    y: { 
+                                        beginAtZero: true, 
+                                        title: { display: true, text: 'Amount ($)', color: '#bbb' }, 
+                                        ticks: { color: '#ddd' }, 
+                                        grid: { color: 'rgba(255,255,255,0.08)' } 
+                                    },
                                 },
                             }}
-
                             height={250}
                         />
                     </div>
@@ -299,9 +345,9 @@ function Dashboard() {
                                     )}
                                     {/* FIX: Render a generic "Record Payment" button if NO recurring bills exist for this org */}
                                     {billsForThisOrg.length === 0 && (
-                                         <div className="ad-hoc-payment-link">
-                                            <Link to={`/record-payment?organizationId=${org.id}`} className="action-link record-link">Record Ad-Hoc Payment</Link>
-                                        </div>
+                                            <div className="ad-hoc-payment-link">
+                                                <Link to={`/record-payment?organizationId=${org.id}`} className="action-link record-link">Record Ad-Hoc Payment</Link>
+                                            </div>
                                     )}
                                 </li>
                             );
@@ -319,12 +365,12 @@ function Dashboard() {
                     <>
                         <ul>
                             {recentlyPaidBillsToShow.length > 0 ? recentlyPaidBillsToShow.map(bill => (
-                                 <li key={bill.id} className="bill-item paid-item">
-                                    <span className="bill-org">{bill.organizationName}</span>
-                                    {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
-                                    <span> - Paid: {formatCurrency(bill.amountPaid)}</span>
-                                    <span className="paid-date"> on {formatDate(bill.datePaid)}</span>
-                                </li>
+                                    <li key={bill.id} className="bill-item paid-item">
+                                        <span className="bill-org">{bill.organizationName}</span>
+                                        {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
+                                        <span> - Paid: {formatCurrency(bill.amountPaid)}</span>
+                                        <span className="paid-date"> on {formatDate(bill.datePaid)}</span>
+                                    </li>
                             )) : <p>No recently paid bills.</p>}
                         </ul>
                         {hasMorePaidBills && (
