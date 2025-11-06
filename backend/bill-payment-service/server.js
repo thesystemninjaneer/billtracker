@@ -626,69 +626,97 @@ app.get('/payments/organization/:orgId/timeseries', async (req, res) => {
 //   "due": [200, 100, 0, 50, 0, 0, ...]
 // }
 app.get('/payments/monthly-overview', authenticateToken, async (req, res) => {
-  try {
-    // 1️⃣ Determine which month to analyze
-    const { month } = req.query; // Expected format: YYYY-MM (optional)
-    const now = new Date();
+  try {
+    // 1. Determine which month to analyze
+    const { month } = req.query; // Expected format: YYYY-MM (optional)
+    const now = new Date();
+    
+    const targetMonth = month
+      ? new Date(`${month}-02T00:00:00`)
+      : new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const targetMonth = month
-      ? new Date(`${month}-01`)
-      : new Date(now.getFullYear(), now.getMonth(), 1);
+    const year = targetMonth.getFullYear();
+    const monthIndex = targetMonth.getMonth() + 1;
+    const userId = req.user.id;
 
-    const year = targetMonth.getFullYear();
-    const monthIndex = targetMonth.getMonth() + 1; // MySQL months are 1-based
+    // 2. Define the query string
+    const sqlQuery = `
+      (
+          -- Get all payments that were PAID in the target month
+          SELECT
+              date_paid AS event_date,
+              'paid' AS event_type,
+              amount_paid AS amount
+          FROM payments
+          WHERE
+              user_id = ? AND
+              payment_status = 'paid' AND
+              MONTH(date_paid) = ? AND
+              YEAR(date_paid) = ?
+      )
+      UNION ALL
+      (
+          -- Get all payments that were DUE in the target month (and aren't paid)
+          SELECT
+              due_date AS event_date,
+              'due' AS event_type,
+              amount_due AS amount
+          FROM payments
+          WHERE
+              user_id = ? AND
+              payment_status != 'paid' AND
+              MONTH(due_date) = ? AND
+              YEAR(due_date) = ?
+      )
+      ORDER BY event_date;
+      `;
 
-    // 2️⃣ Query daily totals for the selected month
-    const [rows] = await pool.query(
-      `
-      SELECT 
-        DATE(COALESCE(date_paid, due_date)) AS day,
-        SUM(CASE WHEN date_paid IS NOT NULL THEN amount_paid ELSE 0 END) AS paidTotal,
-        SUM(CASE WHEN due_date IS NOT NULL THEN amount_due ELSE 0 END) AS dueTotal
-      FROM payments
-      WHERE 
-        (
-          (MONTH(date_paid) = ? AND YEAR(date_paid) = ?)
-          OR (MONTH(due_date) = ? AND YEAR(due_date) = ?)
-        )
-      GROUP BY day
-      ORDER BY day;
-      `,
-      [monthIndex, year, monthIndex, year]
-    );
+    // 3. Execute the .trim()'d query with parameters
+    const [rows] = await pool.query(
+      sqlQuery.trim(), // FIX: Trim whitespace from the end of the query
+      [userId, monthIndex, year, userId, monthIndex, year]
+    );
 
-    // 3️⃣ Build a complete list of all days in that month
-    const daysInMonth = new Date(year, monthIndex, 0).getDate();
-    const paid = Array(daysInMonth).fill(0);
-    const due = Array(daysInMonth).fill(0);
-    const labels = Array.from({ length: daysInMonth }, (_, i) =>
-      `${year}-${String(monthIndex).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`
-    );
+    // 4. Build a complete, zero-filled list of all days in that month
+    const daysInMonth = new Date(year, monthIndex, 0).getDate();
+    const paid = Array(daysInMonth).fill(0);
+    const due = Array(daysInMonth).fill(0);
+    const labels = Array.from({ length: daysInMonth }, (_, i) =>
+      `${year}-${String(monthIndex).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`
+    );
 
-    // 4️⃣ Fill in values for days that exist in query results
-    rows.forEach(r => {
-      const d = new Date(r.day);
-      const dayIndex = d.getDate() - 1;
-      paid[dayIndex] = Number(r.paidTotal || 0);
-      due[dayIndex] = Number(r.dueTotal || 0);
-    });
+    console.log('monthly-overview rows:', rows);    
 
-    // 5️⃣ Return consistent JSON
-    res.json({
-      month: `${year}-${String(monthIndex).padStart(2, '0')}`,
-      labels,
-      paid,
-      due
-    });
+    // 5. Fill in values for days that exist in query results
+    rows.forEach(r => {
+      const dateStr = new Date(r.event_date).toISOString().split('T')[0];
+      const dayIndex = parseInt(dateStr.split('-')[2], 10) - 1;
+      if (dayIndex >= 0 && dayIndex < daysInMonth) {
+        if (r.event_type === 'paid') {
+          paid[dayIndex] += Number(r.amount || 0);
+        } else if (r.event_type === 'due') {
+          due[dayIndex] += Number(r.amount || 0);
+        }
+      }
+    });
 
-  } catch (err) {
-    console.error('Error generating monthly overview:', err);
-    res.status(500).json({
-      error: 'Failed to fetch monthly overview',
-      details: err.message
-    });
-  }
+    // 6. Return consistent JSON
+    res.json({
+      month: `${year}-${String(monthIndex).padStart(2, '0')}`,
+      labels,
+      paid,
+      due
+    });
+
+  } catch (err) {
+    console.error('Error generating monthly overview:', err);
+    res.status(500).json({
+      error: 'Failed to fetch monthly overview',
+      details: err.message // Corrected 'Deta' to 'details'
+    });
+  }
 });
+
 
 /**
  * @route GET /payments/export

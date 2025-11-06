@@ -15,7 +15,8 @@ import {
     PointElement,
     Legend,
     Tooltip,
-    TimeScale
+    TimeScale,
+    ScatterController
 } from 'chart.js';
 import 'chartjs-adapter-date-fns';
 import { addMonths, startOfMonth, endOfMonth, startOfWeek, addDays, format } from 'date-fns';
@@ -62,6 +63,7 @@ const monthSeparatorPlugin = {
 // ✅ Register all once globally
 ChartJS.register(
   LineElement,
+  ScatterController,
   CategoryScale,
   LinearScale,
   PointElement,
@@ -102,7 +104,7 @@ function Dashboard() {
                 authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/recently-paid`),
                 authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills`)
             ]);
-            
+
             if (!orgsRes.ok || !upcomingRes.ok || !paidRes.ok || !billsRes.ok) {
                 throw new Error('Failed to load all dashboard data.');
             }
@@ -162,19 +164,32 @@ function Dashboard() {
 
         const { labels, paid, due } = monthlyOverview;
 
+        const dates = labels.map(date => new Date(date));
+
         return {
-            labels: labels.map(date => new Date(date)),
+            labels: dates,
             datasets: [
+                // === Lollipop stems for Total Paid ===
                 {
-                    label: 'Total Paid',
+                    label: 'Total Paid (Stem)',
+                    type: 'bar',
                     data: paid,
-                    borderColor: '#4ade80',
-                    backgroundColor: 'rgba(74, 222, 128, 0.15)',
-                    fill: true,
-                    tension: 0.35,
-                    borderWidth: 2,
-                    pointRadius: 0,
+                    backgroundColor: '#4ade80',
+                    barPercentage: 0.05, // very thin vertical lines
+                    categoryPercentage: 1,
+                    borderRadius: 0,
                 },
+                // === Circles on top of stems ===
+                {
+                    label: 'Total Paid (Circle)',
+                    type: 'scatter',
+                    data: dates.map((d, i) => ({ x: d, y: paid[i] })),
+                    backgroundColor: '#4ade80',
+                    borderColor: '#4ade80',
+                    pointStyle: 'circle',
+                    radius: 5,
+                },
+                // === Total Due as regular filled line ===
                 {
                     label: 'Total Due',
                     data: due,
@@ -207,35 +222,19 @@ function Dashboard() {
                                 responsive: true,
                                 maintainAspectRatio: false,
                                 plugins: {
-                                    legend: {
-                                        position: 'bottom',
-                                        labels: {
-                                            color: '#eee',
-                                            font: { size: 13, weight: '500' },
-                                        },
-                                    },
+                                    legend: { position: 'bottom', labels: { color: '#eee', font: { size: 13, weight: '500' } } },
                                     tooltip: {
                                         callbacks: {
-                                            label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
+                                            label: (ctx) => `${ctx.dataset.label.replace(' (Stem)', '')}: ${formatCurrency(ctx.parsed.y)}`,
                                         },
                                     },
                                 },
                                 scales: {
-                                    x: {
-                                        type: 'time',
-                                        time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
-                                        ticks: { color: '#ddd', maxRotation: 0, autoSkip: true },
-                                        grid: { color: 'rgba(255,255,255,0.05)' },
-                                        title: { display: true, text: 'Date', color: '#bbb' },
-                                    },
-                                    y: {
-                                        beginAtZero: true,
-                                        title: { display: true, text: 'Amount ($)', color: '#bbb' },
-                                        ticks: { color: '#ddd' },
-                                        grid: { color: 'rgba(255,255,255,0.08)' },
-                                    },
+                                    x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'MM/dd' } }, ticks: { color: '#ddd' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                                    y: { beginAtZero: true, title: { display: true, text: 'Amount ($)', color: '#bbb' }, ticks: { color: '#ddd' }, grid: { color: 'rgba(255,255,255,0.08)' } },
                                 },
                             }}
+
                             height={250}
                         />
                     </div>
