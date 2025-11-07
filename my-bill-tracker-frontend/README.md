@@ -438,6 +438,7 @@ Here is the order to follow when building and testing individual services during
    ![add-bill](../images/add-bill.png)
    ![edit-bills](../images/edit-bills.png)
    ![rcd-pymnt](../images/record-payment.png)
+   ![bill-info.png](../images/bill-info.png)
 6. [frontend](../my-bill-tracker-frontend/README.md) (this page)
 
-Or go back to the [main README](../README.md). 
+Or go back to the [main README](../README.md).
