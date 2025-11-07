@@ -215,7 +215,7 @@ function Dashboard() {
                     categoryPercentage: 1,
                     borderRadius: 0,
                     pointStyle: false,
-                    hidden: true,
+                    // REMOVED: hidden: true
                     yAxisID: 'y'
                 },
                 // 2. Amount Paid (Circle) - Green
@@ -239,7 +239,7 @@ function Dashboard() {
                     categoryPercentage: 1,
                     borderRadius: 0,
                     pointStyle: false,
-                    hidden: true,
+                    // REMOVED: hidden: true
                     yAxisID: 'y'
                 },
                 // 4. Amount Due (Circle) - Red
@@ -406,9 +406,9 @@ function Dashboard() {
                                     )}
                                     {/* FIX: Render a generic "Record Payment" button if NO recurring bills exist for this org */}
                                     {billsForThisOrg.length === 0 && (
-                                            <div className="ad-hoc-payment-link">
-                                                <Link to={`/record-payment?organizationId=${org.id}`} className="action-link record-link">Record Ad-Hoc Payment</Link>
-                                            </div>
+                                        <div className="ad-hoc-payment-link">
+                                            <Link to={`/record-payment?organizationId=${org.id}`} className="action-link record-link">Record Ad-Hoc Payment</Link>
+                                        </div>
                                     )}
                                 </li>
                             );
