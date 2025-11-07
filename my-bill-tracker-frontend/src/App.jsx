@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Header from './components/Header.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import OrganizationsPage from './pages/BillOrganizationForm.jsx'; 
+import InfoPage from './pages/InfoPage.jsx';
 import RecordPaymentForm from './pages/RecordPaymentForm.jsx';
 import BillsPage from './pages/BillsPage.jsx'; // merged page from ./pages/AddBillForm.jsx, ./pages/EditBillListPage.jsx, ./pages/EditBillForm
 import Register from './pages/Register.jsx';
@@ -135,6 +136,7 @@ function AppContent() {
 
           <Route path="/organizations" element={<ProtectedRoute><OrganizationsPage /></ProtectedRoute>} />
           <Route path="/organizations/:id" element={<ProtectedRoute><OrganizationsPage /></ProtectedRoute>} />
+          <Route path="/organizations/:id/info" element={<ProtectedRoute><InfoPage /></ProtectedRoute>} />
 
           <Route path="/bills" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
           <Route path="/bills/:id" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />

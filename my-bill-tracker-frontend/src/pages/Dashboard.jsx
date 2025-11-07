@@ -6,10 +6,85 @@ import config from '../config.js';
 import './Dashboard.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown, faChevronRight } from '@fortawesome/free-solid-svg-icons';
+import { Line } from 'react-chartjs-2';
+import {
+    Chart as ChartJS,
+    LineElement,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    Legend,
+    Tooltip,
+    TimeScale,
+    BarController,
+    ScatterController
+} from 'chart.js';
+import 'chartjs-adapter-date-fns';
+import { addDays, format } from 'date-fns';
+
+// Transparent background plugin (register once globally)
+const transparentBackground = {
+    id: 'transparentBackground',
+    beforeDraw(chart) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-over';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+        ctx.fillRect(0, 0, chart.width, chart.height);
+        ctx.restore();
+    },
+};
+
+const monthSeparatorPlugin = {
+    id: 'monthSeparators',
+    afterDraw(chart) {
+        const { ctx, scales: { x, y } } = chart;
+        const labels = chart.data.labels;
+        if (!labels || labels.length === 0) return;
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 1;
+
+        // Iterate through all data points
+        for (let i = 1; i < labels.length; i++) {
+            const curr = new Date(labels[i]);
+            const prev = new Date(labels[i - 1]);
+            
+            // Check if the month has changed (using UTC methods for consistency with TimeScale)
+            if (curr.getUTCFullYear() !== prev.getUTCFullYear() || curr.getUTCMonth() !== prev.getUTCMonth()) {
+                // Get the pixel position for the start of the current month
+                const xPos = x.getPixelForValue(curr);
+                
+                ctx.beginPath();
+                ctx.moveTo(xPos, y.top);
+                ctx.lineTo(xPos, y.bottom);
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    },
+};
+
+// Register all once globally
+ChartJS.register(
+    LineElement,
+    BarController,
+    ScatterController,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    Legend,
+    Tooltip,
+    TimeScale,
+    transparentBackground,
+    monthSeparatorPlugin
+);
+
 
 function Dashboard() {
     const { authAxios, isAuthenticated, loading } = useAuth();
-    const location = useLocation(); // Hook to access navigation state
+    const location = useLocation();
 
     const [organizations, setOrganizations] = useState([]);
     const [upcomingBills, setUpcomingBills] = useState([]);
@@ -22,33 +97,37 @@ function Dashboard() {
     const [isUpcomingBillsCollapsed, setIsUpcomingBillsCollapsed] = useState(false);
     const [isRecentlyPaidCollapsed, setIsRecentlyPaidCollapsed] = useState(true);
     const [paidBillsLimit, setPaidBillsLimit] = useState(10);
+    const [monthlyOverview, setMonthlyOverview] = useState(null);
 
-    // This fetchData function is now defined outside useEffect so we can call it on demand
     const fetchData = async () => {
         setIsFetching(true);
         try {
-            const [orgsRes, upcomingRes, paidRes, billsRes] = await Promise.all([
+            const [orgsRes, overviewRes, upcomingRes, paidRes, billsRes] = await Promise.all([
                 authAxios(config.ORGANIZATION_API_BASE_URL),
+                authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/monthly-overview`),
                 authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/upcoming`),
                 authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/recently-paid`),
                 authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills`)
             ]);
-            
-            if (!orgsRes.ok || !upcomingRes.ok || !paidRes.ok || !billsRes.ok) {
-                throw new Error('Failed to load all dashboard data.');
-            }
 
+            if (!overviewRes.ok) { 
+                throw new Error('Failed to load dashboard data.');
+            }
+            
             const orgsData = await orgsRes.json();
             const upcomingData = await upcomingRes.json();
             const paidData = await paidRes.json();
             const billsData = await billsRes.json();
+            const overviewData = await overviewRes.json();
 
-            setOrganizations(orgsData.organizations);
-            setUpcomingBills(upcomingData);
-            setRecentlyPaidBills(paidData);
-            setRecurringBills(billsData);
+            setOrganizations(orgsData.organizations || []);
+            setUpcomingBills(upcomingData || []);
+            setRecentlyPaidBills(paidData || []);
+            setRecurringBills(billsData || []);
+            setMonthlyOverview(overviewData);
 
         } catch (err) {
+            console.error(err);
             setError("Failed to load dashboard data. Please try again.");
         } finally {
             setIsFetching(false);
@@ -59,11 +138,10 @@ function Dashboard() {
         if (isAuthenticated && !loading) {
             fetchData();
         }
-        // If we navigated here with a 'refresh' state, clear it after fetching to prevent loops
         if (location.state?.refresh) {
             window.history.replaceState({}, document.title)
         }
-    }, [isAuthenticated, loading, authAxios, location.state?.refresh]); // Re-run effect if refresh state is present
+    }, [isAuthenticated, loading, authAxios, location.state?.refresh]);
 
     const formatCurrency = (amount) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
     
@@ -81,10 +159,195 @@ function Dashboard() {
     const hasMorePaidBills = recentlyPaidBills.length > paidBillsLimit;
 
     if (loading || isFetching) return <div className="dashboard-container">Loading dashboard...</div>;
-    
+
+    // === Monthly Trend Data Builder (Tally Logic Implemented) ===
+    const buildMonthlyTrendData = () => {
+        if (!monthlyOverview) return null;
+
+        const { labels, paid, due } = monthlyOverview;
+        const dates = labels.map(date => new Date(date));
+        
+        // --- Tally Trace Calculation (New Logic) ---
+        // 1. Calculate the initial starting value: Sum of all DUE amounts.
+        const initialLiability = due.reduce((sum, amount) => sum + amount, 0);
+        
+        let runningLiability = initialLiability;
+        let cumulativeLiabilityData = [];
+        
+        // 2. Define the start point (one day before the first data point)
+        const firstDate = dates[0];
+        const dayBeforeFirst = addDays(firstDate, -1); 
+        
+        // Add the starting point at the total sum
+        cumulativeLiabilityData.push({ x: dayBeforeFirst, y: initialLiability });
+        
+        // 3. Iterate through the dates: Subtract Paid amount each day
+        for (let i = 0; i < dates.length; i++) {
+             const date = dates[i];
+             
+             // The liability decreases ONLY by the Amount PAID
+             runningLiability -= paid[i];
+             
+             cumulativeLiabilityData.push({ x: date, y: runningLiability });
+        }
+        
+        // FIX: Ensure the line holds the final value across the rest of the chart's visible X-axis range.
+        if (cumulativeLiabilityData.length > 0 && dates.length > 0) {
+            const finalBalance = runningLiability;
+            const lastDate = dates[dates.length - 1];
+            // Add a point one day after the last date to stabilize the line horizontally.
+            const dayAfterLast = addDays(lastDate, 1);
+            
+            cumulativeLiabilityData.push({ x: dayAfterLast, y: finalBalance });
+        }
+        // --- End Tally Trace Calculation ---
+
+        return {
+            labels: dates,
+            datasets: [
+                // 1. Amount Paid (Stem) - Green
+                {
+                    label: 'Amount Paid (Stem)',
+                    type: 'bar',
+                    data: paid,
+                    backgroundColor: '#4ade80',
+                    barPercentage: 0.05,
+                    categoryPercentage: 1,
+                    borderRadius: 0,
+                    pointStyle: false,
+                    // REMOVED: hidden: true
+                    yAxisID: 'y'
+                },
+                // 2. Amount Paid (Circle) - Green
+                {
+                    label: 'Amount Paid', 
+                    type: 'scatter',
+                    data: dates.map((d, i) => ({ x: d, y: paid[i] })),
+                    backgroundColor: '#4ade80',
+                    borderColor: '#4ade80',
+                    pointStyle: 'circle',
+                    radius: 5,
+                    yAxisID: 'y'
+                },
+                // 3. Amount Due (Stem) - Red
+                {
+                    label: 'Amount Due (Stem)',
+                    type: 'bar',
+                    data: due,
+                    backgroundColor: '#f87171',
+                    barPercentage: 0.05,
+                    categoryPercentage: 1,
+                    borderRadius: 0,
+                    pointStyle: false,
+                    // REMOVED: hidden: true
+                    yAxisID: 'y'
+                },
+                // 4. Amount Due (Circle) - Red
+                {
+                    label: 'Amount Due', 
+                    type: 'scatter',
+                    data: dates.map((d, i) => ({ x: d, y: due[i] })),
+                    backgroundColor: '#f87171',
+                    borderColor: '#f87171',
+                    pointStyle: 'circle',
+                    radius: 5,
+                    yAxisID: 'y'
+                },
+                // 5. Total Due Trace (Cumulative) - Single Solid Line
+                {
+                    label: 'Total Due', // Represents the cumulative amount remaining
+                    type: 'line',
+                    data: cumulativeLiabilityData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'transparent',
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    tension: 0.2,
+                    spanGaps: false,
+                    yAxisID: 'y2',
+                },
+            ],
+        };
+    };
+
+    const monthlyTrendData = buildMonthlyTrendData();
+
+
     return (
         <div className="dashboard-container">
             {error && <p className="error-message">{error}</p>}
+
+            {/* === Month Overview Chart === */}
+            {monthlyOverview && monthlyTrendData && (
+                <section className="dashboard-section monthly-trend">
+                    <h3 className="collapsible-header">📊 This Month At A Glance</h3>
+                    <div className="chart-container" style={{ height: '350px', marginBottom: '20px' }}>
+                        <Line
+                            data={monthlyTrendData}
+                            options={{
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: {
+                                    mode: 'index',
+                                    intersect: false,
+                                },
+                                plugins: {
+                                    tooltip: {
+                                        callbacks: {
+                                            // Handle both axes and filter out stem datasets
+                                            label: (ctx) => {
+                                                const label = ctx.dataset.label.replace(' (Stem)', '');
+                                                const value = ctx.parsed.y;
+                                                return `${label}: ${formatCurrency(value)}`;
+                                            },
+                                        },
+                                    },
+                                    legend: { 
+                                        position: 'bottom', 
+                                        labels: { 
+                                            color: '#eee', 
+                                            font: { size: 13, weight: '500' },
+                                            // Filter out all (Stem) datasets
+                                            filter: (item) => !item.text.includes('(Stem)')
+                                        } 
+                                    },
+                                },
+                                scales: {
+                                    // Primary Y-Axis (Left) for Daily Amounts
+                                    y: { 
+                                        beginAtZero: true, 
+                                        title: { display: true, text: 'Daily Amount ($)', color: '#bbb' }, 
+                                        ticks: { color: '#ddd' }, 
+                                        grid: { color: 'rgba(255,255,255,0.08)' } 
+                                    },
+                                    // Secondary Y-Axis (Right) for Tally/Liability
+                                    y2: { 
+                                        position: 'right', 
+                                        beginAtZero: true, // <-- Changed to true
+                                        title: { display: true, text: 'Total Due ($)', color: '#bbb' }, 
+                                        ticks: { color: '#ddd' }, 
+                                        grid: { drawOnChartArea: false }, // Only draw grid for y axis
+                                    },
+                                    x: { 
+                                        type: 'time', 
+                                        time: { 
+                                            unit: 'day', 
+                                            displayFormats: { 
+                                                day: 'MM/dd'
+                                            },
+                                            tooltipFormat: 'MMM dd, yyyy'
+                                        }, 
+                                        ticks: { color: '#ddd' }, 
+                                        grid: { color: 'rgba(255,255,255,0.05)' } 
+                                    },
+                                },
+                            }}
+                            height={300}
+                        />
+                    </div>
+                </section>
+            )}
+
 
             {/* Upcoming Bills Section */}
             <section className="dashboard-section upcoming-bills">
@@ -127,6 +390,7 @@ function Dashboard() {
                                         <div className="item-actions">
                                             {org.website && <a href={org.website} target="_blank" rel="noopener noreferrer" className="action-link website-link">Visit Website</a>}
                                             <Link to={`/organizations/${org.id}`} className="action-link edit-link">Edit</Link>
+                                            <Link to={`/organizations/${org.id}/info`} className="action-link info-link">Info</Link>
                                         </div>
                                     </div>
                                     {/* Render recurring bills if they exist */}
@@ -142,7 +406,7 @@ function Dashboard() {
                                     )}
                                     {/* FIX: Render a generic "Record Payment" button if NO recurring bills exist for this org */}
                                     {billsForThisOrg.length === 0 && (
-                                         <div className="ad-hoc-payment-link">
+                                        <div className="ad-hoc-payment-link">
                                             <Link to={`/record-payment?organizationId=${org.id}`} className="action-link record-link">Record Ad-Hoc Payment</Link>
                                         </div>
                                     )}
@@ -162,12 +426,12 @@ function Dashboard() {
                     <>
                         <ul>
                             {recentlyPaidBillsToShow.length > 0 ? recentlyPaidBillsToShow.map(bill => (
-                                 <li key={bill.id} className="bill-item paid-item">
-                                    <span className="bill-org">{bill.organizationName}</span>
-                                    {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
-                                    <span> - Paid: {formatCurrency(bill.amountPaid)}</span>
-                                    <span className="paid-date"> on {formatDate(bill.datePaid)}</span>
-                                </li>
+                                    <li key={bill.id} className="bill-item paid-item">
+                                        <span className="bill-org">{bill.organizationName}</span>
+                                        {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
+                                        <span> - Paid: {formatCurrency(bill.amountPaid)}</span>
+                                        <span className="paid-date"> on {formatDate(bill.datePaid)}</span>
+                                    </li>
                             )) : <p>No recently paid bills.</p>}
                         </ul>
                         {hasMorePaidBills && (
