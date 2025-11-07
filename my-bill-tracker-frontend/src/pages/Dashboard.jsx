@@ -1,3 +1,4 @@
+// my-bill-tracker-frontend/src/pages/Dashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -65,7 +66,7 @@ const monthSeparatorPlugin = {
     },
 };
 
-// ✅ Register all once globally
+// Register all once globally
 ChartJS.register(
     LineElement,
     BarController,
@@ -165,50 +166,40 @@ function Dashboard() {
 
         const { labels, paid, due } = monthlyOverview;
         const dates = labels.map(date => new Date(date));
-        const today = new Date();
-
-        // --- Tally Trace Calculation ---
-        const totalLiability = due.reduce((sum, amount) => sum + amount, 0);
+        
+        // --- Tally Trace Calculation (New Logic) ---
+        // 1. Calculate the initial starting value: Sum of all DUE amounts.
+        const initialLiability = due.reduce((sum, amount) => sum + amount, 0);
+        
+        let runningLiability = initialLiability;
+        let cumulativeLiabilityData = [];
+        
+        // 2. Define the start point (one day before the first data point)
         const firstDate = dates[0];
-        // Start the line one day before the first data point for a clean high starting line
         const dayBeforeFirst = addDays(firstDate, -1); 
         
-        let runningLiability = totalLiability;
-        let pastTallyData = [];
-        let futureTallyDataPoints = [];
+        // Add the starting point at the total sum
+        cumulativeLiabilityData.push({ x: dayBeforeFirst, y: initialLiability });
         
-        // 1. Initial point (start of liability)
-        const initialTallyPoint = { x: dayBeforeFirst, y: totalLiability };
-        
-        if (dates.length > 0 && dates[0] <= today) {
-             pastTallyData.push(initialTallyPoint);
-        } else {
-             futureTallyDataPoints.push(initialTallyPoint);
-        }
-        
+        // 3. Iterate through the dates: Subtract Paid amount each day
         for (let i = 0; i < dates.length; i++) {
              const date = dates[i];
-             // Compare date object to today's date object
-             const isFuture = date.getTime() > today.getTime(); 
              
-             if (!isFuture) {
-                // Past/Present: Liability decreases by the Amount PAID
-                runningLiability -= paid[i];
-                pastTallyData.push({ x: date, y: runningLiability });
-             } else {
-                 // Future: Liability decreases by the Amount DUE (projected liability decrease)
-                 
-                 if (futureTallyDataPoints.length === 0) {
-                     // Connect the future trace to the last past point
-                     const lastPastPoint = pastTallyData[pastTallyData.length - 1];
-                     // Use the last calculated balance as the starting point for the future projection
-                     if(lastPastPoint) futureTallyDataPoints.push(lastPastPoint); 
-                 }
-                 
-                 // Subtract the projected due amount for the future
-                 runningLiability -= due[i];
-                 futureTallyDataPoints.push({ x: date, y: runningLiability });
-             }
+             // The liability decreases ONLY by the Amount PAID
+             runningLiability -= paid[i];
+             
+             cumulativeLiabilityData.push({ x: date, y: runningLiability });
+        }
+        
+        // FIX: Ensure the line holds the final value across the rest of the chart's visible X-axis range, 
+        // preventing an incorrect drop to zero after the last data point.
+        if (cumulativeLiabilityData.length > 0) {
+            const finalBalance = runningLiability;
+            const lastDate = dates[dates.length - 1];
+            // Add a point one day after the last date to stabilize the line horizontally.
+            const dayAfterLast = addDays(lastDate, 1);
+            
+            cumulativeLiabilityData.push({ x: dayAfterLast, y: finalBalance });
         }
         // --- End Tally Trace Calculation ---
 
@@ -263,32 +254,17 @@ function Dashboard() {
                     radius: 5,
                     yAxisID: 'y'
                 },
-                // 5. Tally Trace (Past/Present) - Solid Line (Hidden from legend)
+                // 5. Total Due Trace (Cumulative) - Single Solid Line
                 {
-                    label: 'Current Liability', // Use the same label for the legend filter to work
+                    label: 'Total Due', // Represents the cumulative amount remaining
                     type: 'line',
-                    data: pastTallyData,
+                    data: cumulativeLiabilityData,
                     borderColor: '#3b82f6',
                     backgroundColor: 'transparent',
                     borderWidth: 3,
                     pointRadius: 0,
                     tension: 0.2,
-                    spanGaps: true, 
-                    yAxisID: 'y2',
-                    hidden: true, // We will show the future trace in the legend instead
-                },
-                 // 6. Tally Trace (Future Projection) - Dashed Line (Visible in legend)
-                {
-                    label: 'Current Liability', 
-                    type: 'line',
-                    data: futureTallyDataPoints,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'transparent',
-                    borderWidth: 3,
-                    borderDash: [8, 4], // Dashed line for future projection
-                    pointRadius: 0,
-                    tension: 0.2,
-                    spanGaps: true,
+                    spanGaps: false,
                     yAxisID: 'y2',
                 },
             ],
@@ -305,7 +281,7 @@ function Dashboard() {
             {/* === Month Overview Chart === */}
             {monthlyOverview && monthlyTrendData && (
                 <section className="dashboard-section monthly-trend">
-                    <h3 className="collapsible-header">📊 Spending Trend: Monthly Overview</h3>
+                    <h3 className="collapsible-header">📊 This Month At A Glance</h3>
                     <div className="chart-container" style={{ height: '350px', marginBottom: '20px' }}>
                         <Line
                             data={monthlyTrendData}
@@ -332,8 +308,8 @@ function Dashboard() {
                                         labels: { 
                                             color: '#eee', 
                                             font: { size: 13, weight: '500' },
-                                            // Filter out all (Stem) datasets and the hidden Tally trace
-                                            filter: (item) => !item.text.includes('(Stem)') && item.index !== 4
+                                            // Filter out all (Stem) datasets
+                                            filter: (item) => !item.text.includes('(Stem)')
                                         } 
                                     },
                                 },
@@ -349,7 +325,7 @@ function Dashboard() {
                                     y2: { 
                                         position: 'right', 
                                         beginAtZero: false, 
-                                        title: { display: true, text: 'Liability Remaining ($)', color: '#bbb' }, 
+                                        title: { display: true, text: 'Total Due ($)', color: '#bbb' }, 
                                         ticks: { color: '#ddd' }, 
                                         grid: { drawOnChartArea: false }, // Only draw grid for y axis
                                     },
