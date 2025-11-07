@@ -191,9 +191,8 @@ function Dashboard() {
              cumulativeLiabilityData.push({ x: date, y: runningLiability });
         }
         
-        // FIX: Ensure the line holds the final value across the rest of the chart's visible X-axis range, 
-        // preventing an incorrect drop to zero after the last data point.
-        if (cumulativeLiabilityData.length > 0) {
+        // FIX: Ensure the line holds the final value across the rest of the chart's visible X-axis range.
+        if (cumulativeLiabilityData.length > 0 && dates.length > 0) {
             const finalBalance = runningLiability;
             const lastDate = dates[dates.length - 1];
             // Add a point one day after the last date to stabilize the line horizontally.
@@ -324,7 +323,7 @@ function Dashboard() {
                                     // Secondary Y-Axis (Right) for Tally/Liability
                                     y2: { 
                                         position: 'right', 
-                                        beginAtZero: false, 
+                                        beginAtZero: true, // <-- Changed to true
                                         title: { display: true, text: 'Total Due ($)', color: '#bbb' }, 
                                         ticks: { color: '#ddd' }, 
                                         grid: { drawOnChartArea: false }, // Only draw grid for y axis
