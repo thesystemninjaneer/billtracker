@@ -1,4 +1,3 @@
-// my-bill-tracker-frontend/src/pages/Dashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -16,11 +15,11 @@ import {
     Legend,
     Tooltip,
     TimeScale,
-    BarController, // Added BarController for the 'bar' type in lollipop
+    BarController,
     ScatterController
 } from 'chart.js';
 import 'chartjs-adapter-date-fns';
-import { addMonths, startOfMonth, endOfMonth, startOfWeek, addDays, format } from 'date-fns';
+import { addDays, format } from 'date-fns';
 
 // Transparent background plugin (register once globally)
 const transparentBackground = {
@@ -84,7 +83,7 @@ ChartJS.register(
 
 function Dashboard() {
     const { authAxios, isAuthenticated, loading } = useAuth();
-    const location = useLocation(); // Hook to access navigation state
+    const location = useLocation();
 
     const [organizations, setOrganizations] = useState([]);
     const [upcomingBills, setUpcomingBills] = useState([]);
@@ -98,9 +97,7 @@ function Dashboard() {
     const [isRecentlyPaidCollapsed, setIsRecentlyPaidCollapsed] = useState(true);
     const [paidBillsLimit, setPaidBillsLimit] = useState(10);
     const [monthlyOverview, setMonthlyOverview] = useState(null);
-    // isOverviewCollapsed state is no longer used for the chart section
 
-    // This fetchData function is now defined outside useEffect so we can call it on demand
     const fetchData = async () => {
         setIsFetching(true);
         try {
@@ -112,8 +109,6 @@ function Dashboard() {
                 authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills`)
             ]);
 
-            // Assuming authAxios handles non-200 responses and errors internally
-            // Simplified check based on original pattern:
             if (!overviewRes.ok) { 
                 throw new Error('Failed to load dashboard data.');
             }
@@ -142,11 +137,10 @@ function Dashboard() {
         if (isAuthenticated && !loading) {
             fetchData();
         }
-        // If we navigated here with a 'refresh' state, clear it after fetching to prevent loops
         if (location.state?.refresh) {
             window.history.replaceState({}, document.title)
         }
-    }, [isAuthenticated, loading, authAxios, location.state?.refresh]); // Re-run effect if refresh state is present
+    }, [isAuthenticated, loading, authAxios, location.state?.refresh]);
 
     const formatCurrency = (amount) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
     
@@ -165,60 +159,138 @@ function Dashboard() {
 
     if (loading || isFetching) return <div className="dashboard-container">Loading dashboard...</div>;
 
-    // === Months Overview Data Builder ===
+    // === Monthly Trend Data Builder (Tally Logic Implemented) ===
     const buildMonthlyTrendData = () => {
         if (!monthlyOverview) return null;
 
         const { labels, paid, due } = monthlyOverview;
-
-        // Ensure dates are parsed correctly
         const dates = labels.map(date => new Date(date));
+        const today = new Date();
+
+        // --- Tally Trace Calculation ---
+        const totalLiability = due.reduce((sum, amount) => sum + amount, 0);
+        const firstDate = dates[0];
+        // Start the line one day before the first data point for a clean high starting line
+        const dayBeforeFirst = addDays(firstDate, -1); 
+        
+        let runningLiability = totalLiability;
+        let pastTallyData = [];
+        let futureTallyDataPoints = [];
+        
+        // 1. Initial point (start of liability)
+        const initialTallyPoint = { x: dayBeforeFirst, y: totalLiability };
+        
+        if (dates.length > 0 && dates[0] <= today) {
+             pastTallyData.push(initialTallyPoint);
+        } else {
+             futureTallyDataPoints.push(initialTallyPoint);
+        }
+        
+        for (let i = 0; i < dates.length; i++) {
+             const date = dates[i];
+             // Compare date object to today's date object
+             const isFuture = date.getTime() > today.getTime(); 
+             
+             if (!isFuture) {
+                // Past/Present: Liability decreases by the Amount PAID
+                runningLiability -= paid[i];
+                pastTallyData.push({ x: date, y: runningLiability });
+             } else {
+                 // Future: Liability decreases by the Amount DUE (projected liability decrease)
+                 
+                 if (futureTallyDataPoints.length === 0) {
+                     // Connect the future trace to the last past point
+                     const lastPastPoint = pastTallyData[pastTallyData.length - 1];
+                     // Use the last calculated balance as the starting point for the future projection
+                     if(lastPastPoint) futureTallyDataPoints.push(lastPastPoint); 
+                 }
+                 
+                 // Subtract the projected due amount for the future
+                 runningLiability -= due[i];
+                 futureTallyDataPoints.push({ x: date, y: runningLiability });
+             }
+        }
+        // --- End Tally Trace Calculation ---
 
         return {
             labels: dates,
             datasets: [
-                // === 1. Total Paid (Stem) - Green ===
+                // 1. Amount Paid (Stem) - Green
                 {
-                    label: 'Total Paid (Stem)',
+                    label: 'Amount Paid (Stem)',
                     type: 'bar',
                     data: paid,
-                    backgroundColor: '#4ade80', // Green
+                    backgroundColor: '#4ade80',
                     barPercentage: 0.05,
                     categoryPercentage: 1,
                     borderRadius: 0,
                     pointStyle: false,
+                    hidden: true,
+                    yAxisID: 'y'
                 },
-                // === 2. Total Paid (Circle) - Green ===
+                // 2. Amount Paid (Circle) - Green
                 {
-                    label: 'Total Paid', 
+                    label: 'Amount Paid', 
                     type: 'scatter',
                     data: dates.map((d, i) => ({ x: d, y: paid[i] })),
                     backgroundColor: '#4ade80',
                     borderColor: '#4ade80',
                     pointStyle: 'circle',
                     radius: 5,
+                    yAxisID: 'y'
                 },
-                // === 3. Total Due (Stem) - Red ===
+                // 3. Amount Due (Stem) - Red
                 {
-                    label: 'Total Due (Stem)',
+                    label: 'Amount Due (Stem)',
                     type: 'bar',
                     data: due,
-                    backgroundColor: '#f87171', // Red
+                    backgroundColor: '#f87171',
                     barPercentage: 0.05,
                     categoryPercentage: 1,
                     borderRadius: 0,
                     pointStyle: false,
+                    hidden: true,
+                    yAxisID: 'y'
                 },
-                // === 4. Total Due (Circle) - Red ===
+                // 4. Amount Due (Circle) - Red
                 {
-                    label: 'Total Due', 
+                    label: 'Amount Due', 
                     type: 'scatter',
                     data: dates.map((d, i) => ({ x: d, y: due[i] })),
                     backgroundColor: '#f87171',
                     borderColor: '#f87171',
                     pointStyle: 'circle',
                     radius: 5,
-                }
+                    yAxisID: 'y'
+                },
+                // 5. Tally Trace (Past/Present) - Solid Line (Hidden from legend)
+                {
+                    label: 'Current Liability', // Use the same label for the legend filter to work
+                    type: 'line',
+                    data: pastTallyData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'transparent',
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    tension: 0.2,
+                    spanGaps: true, 
+                    yAxisID: 'y2',
+                    hidden: true, // We will show the future trace in the legend instead
+                },
+                 // 6. Tally Trace (Future Projection) - Dashed Line (Visible in legend)
+                {
+                    label: 'Current Liability', 
+                    type: 'line',
+                    data: futureTallyDataPoints,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'transparent',
+                    borderWidth: 3,
+                    borderDash: [8, 4], // Dashed line for future projection
+                    pointRadius: 0,
+                    tension: 0.2,
+                    spanGaps: true,
+                    yAxisID: 'y2',
+                },
             ],
         };
     };
@@ -230,23 +302,28 @@ function Dashboard() {
         <div className="dashboard-container">
             {error && <p className="error-message">{error}</p>}
 
-            {/* === Month Overview Chart (New) === */}
+            {/* === Month Overview Chart === */}
             {monthlyOverview && monthlyTrendData && (
                 <section className="dashboard-section monthly-trend">
-                    <h3 className="collapsible-header">📊 Month At A Glance</h3>
-                    <div className="chart-container" style={{ height: '300px', marginBottom: '20px' }}>
+                    <h3 className="collapsible-header">📊 Spending Trend: Monthly Overview</h3>
+                    <div className="chart-container" style={{ height: '350px', marginBottom: '20px' }}>
                         <Line
                             data={monthlyTrendData}
                             options={{
                                 responsive: true,
                                 maintainAspectRatio: false,
+                                interaction: {
+                                    mode: 'index',
+                                    intersect: false,
+                                },
                                 plugins: {
                                     tooltip: {
                                         callbacks: {
-                                            // Ensure both stem and circle tooltip labels are neat
+                                            // Handle both axes and filter out stem datasets
                                             label: (ctx) => {
                                                 const label = ctx.dataset.label.replace(' (Stem)', '');
-                                                return `${label}: ${formatCurrency(ctx.parsed.y)}`;
+                                                const value = ctx.parsed.y;
+                                                return `${label}: ${formatCurrency(value)}`;
                                             },
                                         },
                                     },
@@ -255,33 +332,42 @@ function Dashboard() {
                                         labels: { 
                                             color: '#eee', 
                                             font: { size: 13, weight: '500' },
-                                            // Filter out all (Stem) datasets from the legend
-                                            filter: (item) => !item.text.includes('(Stem)')
+                                            // Filter out all (Stem) datasets and the hidden Tally trace
+                                            filter: (item) => !item.text.includes('(Stem)') && item.index !== 4
                                         } 
                                     },
                                 },
                                 scales: {
+                                    // Primary Y-Axis (Left) for Daily Amounts
+                                    y: { 
+                                        beginAtZero: true, 
+                                        title: { display: true, text: 'Daily Amount ($)', color: '#bbb' }, 
+                                        ticks: { color: '#ddd' }, 
+                                        grid: { color: 'rgba(255,255,255,0.08)' } 
+                                    },
+                                    // Secondary Y-Axis (Right) for Tally/Liability
+                                    y2: { 
+                                        position: 'right', 
+                                        beginAtZero: false, 
+                                        title: { display: true, text: 'Liability Remaining ($)', color: '#bbb' }, 
+                                        ticks: { color: '#ddd' }, 
+                                        grid: { drawOnChartArea: false }, // Only draw grid for y axis
+                                    },
                                     x: { 
                                         type: 'time', 
                                         time: { 
-                                            unit: 'day', // Reverted back to day unit for detailed view
+                                            unit: 'day', 
                                             displayFormats: { 
-                                                day: 'MM/dd' // Original display format
+                                                day: 'MM/dd'
                                             },
                                             tooltipFormat: 'MMM dd, yyyy'
                                         }, 
                                         ticks: { color: '#ddd' }, 
                                         grid: { color: 'rgba(255,255,255,0.05)' } 
                                     },
-                                    y: { 
-                                        beginAtZero: true, 
-                                        title: { display: true, text: 'Amount ($)', color: '#bbb' }, 
-                                        ticks: { color: '#ddd' }, 
-                                        grid: { color: 'rgba(255,255,255,0.08)' } 
-                                    },
                                 },
                             }}
-                            height={250}
+                            height={300}
                         />
                     </div>
                 </section>
