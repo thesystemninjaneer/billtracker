@@ -1,5 +1,4 @@
-// my-bill-tracker-frontend/src/pages/InfoPage.jsx
-// NOTE: This file has been replaced by BillDetails.jsx and is no longer in use.
+// my-bill-tracker-frontend/src/pages/BillDetails.jsx
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -11,25 +10,55 @@ import {
   CategoryScale,
   LinearScale,
   Legend,
-  Tooltip,
+  Tooltip
 } from 'chart.js';
-import './Forms.css';
+import './Forms.css'; 
+import './BillDetails.css';
 
-// Register base Chart.js components
+// Register chart components
 ChartJS.register(BarElement, CategoryScale, LinearScale, Legend, Tooltip);
+
+// Month-separator plugin
+const monthSeparatorPlugin = {
+  id: 'monthSeparators',
+  afterDraw(chart) {
+    const { ctx, scales: { x, y } } = chart;
+    const labels = chart.data.labels;
+    if (!labels?.length) return;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+
+    for (let i = 1; i < labels.length; i++) {
+      const curr = new Date(chart.data.labels[i]);
+      const prev = new Date(chart.data.labels[i - 1]);
+      if (curr.getMonth() !== prev.getMonth()) {
+        const xPos = x.getPixelForValue(i);
+        ctx.beginPath();
+        ctx.moveTo(xPos, y.top);
+        ctx.lineTo(xPos, y.bottom);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  },
+};
+ChartJS.register(monthSeparatorPlugin);
 
 function BillDetails() {
   const { organizationId, billId } = useParams();
   const { authAxios } = useAuth();
 
   const [range, setRange] = useState('3m');
-  const [data, setData] = useState([]);
-  const [orgName, setOrgName] = useState('');
+
+  // Data sets
+  const [chartDataArr, setChartDataArr] = useState([]);
   const [billInfo, setBillInfo] = useState(null);
+  const [orgName, setOrgName] = useState('');
 
-  const [loading, setLoading] = useState(true);
+  const [loadingChart, setLoadingChart] = useState(true);
   const [loadingInfo, setLoadingInfo] = useState(true);
-
   const [error, setError] = useState('');
 
   const ranges = [
@@ -41,70 +70,58 @@ function BillDetails() {
     { label: 'All', value: 'all' },
   ];
 
-  // -----------------------------
-  // 1. Existing TIMESERIES fetch
-  // -----------------------------
+  // --- Fetch the Chart Data ---
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchChart = async () => {
       try {
-        setLoading(true);
-        setError('');
-
+        setLoadingChart(true);
         const res = await authAxios(
           `${config.BILL_PAYMENT_API_BASE_URL}/payments/organization/${organizationId}/timeseries?range=${range}`
         );
-        if (!res.ok) throw new Error('Failed to fetch payment data');
+        if (!res.ok) throw new Error('Failed chart fetch');
 
         const json = await res.json();
-        setData(json.data || []);
+        setChartDataArr(json.data || []);
         setOrgName(json.organizationName || '');
       } catch (err) {
-        console.error('Error fetching org timeseries:', err);
-        setError('Unable to load payment info.');
+        console.error(err);
+        setError('Unable to load chart data.');
       } finally {
-        setLoading(false);
+        setLoadingChart(false);
       }
     };
-
-    fetchData();
+    fetchChart();
   }, [organizationId, range, authAxios]);
 
-  // -----------------------------
-  // 2. NEW Bill Info Fetch
-  // -----------------------------
+  // --- Fetch the Bill Info ---
   useEffect(() => {
-    const fetchBillInfo = async () => {
+    const fetchInfo = async () => {
       try {
         setLoadingInfo(true);
-        const res = await authAxios(
-          `${config.BILL_PAYMENT_API_BASE_URL}/bills/${billId}/info`
-        );
+        const res = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills/${billId}/info`);
         if (!res.ok) throw new Error('Failed to fetch bill info');
 
-        const info = await res.json();
-        setBillInfo(info);
+        const json = await res.json();
+        setBillInfo(json);
       } catch (err) {
-        console.error('Error fetching bill info:', err);
+        console.error(err);
+        setError('Unable to load bill info.');
       } finally {
         setLoadingInfo(false);
       }
     };
-
-    fetchBillInfo();
+    fetchInfo();
   }, [billId, authAxios]);
 
-  const formatCurrency = (amount) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  const formatCurrency = (n) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
 
-  // Format dates as MM/DD in local timezone
-  const labels = data.map((d) =>
-    new Date(d.date).toLocaleDateString(undefined, {
-      month: '2-digit',
-      day: '2-digit',
-    })
+  const formatDate = (d) =>
+    d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+
+  // Build chart
+  const labels = chartDataArr.map((d) =>
+    new Date(d.date).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' })
   );
 
   const chartData = {
@@ -112,43 +129,14 @@ function BillDetails() {
     datasets: [
       {
         label: 'Total Paid',
-        data: data.map((d) => d.total),
+        data: chartDataArr.map((d) => d.total),
         backgroundColor: 'rgba(99, 179, 237, 0.6)',
         borderColor: '#60a5fa',
         borderWidth: 1,
+        hoverBackgroundColor: 'rgba(99, 179, 237, 0.8)',
       },
     ],
   };
-
-  // --- 💡 Month Separator Plugin ---
-  const monthSeparatorPlugin = {
-    id: 'monthSeparators',
-    afterDraw(chart) {
-      const { ctx, scales: { x, y } } = chart;
-      const labels = chart.data.labels;
-      if (!labels || labels.length === 0) return;
-
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-      ctx.lineWidth = 1;
-
-      for (let i = 1; i < labels.length; i++) {
-        const curr = new Date(chart.data.labels[i]);
-        const prev = new Date(chart.data.labels[i - 1]);
-        if (curr.getMonth() !== prev.getMonth()) {
-          const xPos = x.getPixelForValue(i);
-          ctx.beginPath();
-          ctx.moveTo(xPos, y.top);
-          ctx.lineTo(xPos, y.bottom);
-          ctx.stroke();
-        }
-      }
-      ctx.restore();
-    },
-  };
-
-  // Register the plugin (safe inside render since ChartJS caches by ID)
-  ChartJS.register(monthSeparatorPlugin);
 
   const options = {
     responsive: true,
@@ -156,64 +144,100 @@ function BillDetails() {
     plugins: {
       legend: { display: true, labels: { color: '#ccc' } },
       tooltip: {
-        backgroundColor: 'rgba(30,30,30,0.85)',
-        titleColor: '#fff',
-        bodyColor: '#eee',
-        callbacks: { label: (ctx) => formatCurrency(ctx.parsed.y) },
+        callbacks: {
+          label: (ctx) => formatCurrency(ctx.parsed.y),
+        },
       },
     },
     scales: {
-      x: { ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-      y: { ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-    }
+      x: {
+        ticks: { color: '#ccc' },
+        grid: { color: 'rgba(255,255,255,0.1)' },
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { color: '#ccc' },
+        grid: { color: 'rgba(255,255,255,0.1)' },
+      },
+    },
   };
 
-  if (loading) return <div className="form-container">Loading chart...</div>;
-
   return (
-    <div className="form-container">
-      <h2>Payment History for {orgName}</h2>
+    <div className="info-page-container">
+      {/* Breadcrumbs */}
+      <nav className="breadcrumbs">
+        <Link to="/">Dashboard</Link> <span>/</span>
+        <Link to={`/organizations/${organizationId}`}>{orgName || 'Organization'}</Link> <span>/</span>
+        <span className="current">Bill Info</span>
+      </nav>
 
-      <div className="form-group">
-        <label htmlFor="range">Time Range:</label>
-        <select id="range" value={range} onChange={(e) => setRange(e.target.value)}>
-          {ranges.map((r) => (
-            <option key={r.value} value={r.value}>{r.label}</option>
-          ))}
-        </select>
-      </div>
+      {/* Page Title */}
+      <h2 className="info-title">Bill Details</h2>
 
-      <div className="chart-container" style={{ height: '350px', marginTop: '20px' }}>
-        {data.length > 0 ? <Bar data={chartData} options={options} /> : <p>No data.</p>}
-      </div>
-
-      {/* ------------------------------ */}
-      {/*      BILL INFORMATION PANEL     */}
-      {/* ------------------------------ */}
-      <h3 style={{ marginTop: '2rem' }}>Bill Details</h3>
-
-      {loadingInfo ? (
-        <p>Loading bill info…</p>
-      ) : billInfo ? (
-        <div className="bill-info-box">
-          <p><strong>Bill Name:</strong> {billInfo.billName}</p>
-          <p><strong>Bill ID:</strong> {billInfo.billId}</p>
-          <p><strong>Organization:</strong> {billInfo.organizationName}</p>
-          <p><strong>Account:</strong> {billInfo.accountNumber}</p>
-          <p><strong>Frequency:</strong> {billInfo.frequency}</p>
-          <p><strong>Due Day:</strong> {billInfo.dueDay ?? '—'}</p>
-          <p><strong>Typical Amount:</strong> {billInfo.typicalAmount ? formatCurrency(billInfo.typicalAmount) : '—'}</p>
-          <p><strong>Notes:</strong> {billInfo.notes || '—'}</p>
-          <p><strong>Created:</strong> {billInfo.billCreatedAt?.split('T')[0]}</p>
-          <p><strong>Updated:</strong> {billInfo.billUpdatedAt?.split('T')[0]}</p>
-          <p><strong>Creator:</strong> {billInfo.creatorName}</p>
+      {/* --- Chart Section --- */}
+      <section className="info-section">
+        <div className="info-section-header">
+          <h3>Payment History</h3>
+          <select value={range} onChange={(e) => setRange(e.target.value)}>
+            {ranges.map((r) => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
+          </select>
         </div>
-      ) : (
-        <p>No bill info found.</p>
-      )}
 
-      <div className="form-actions" style={{ marginTop: '1rem' }}>
-        <Link to="/" className="action-link back-link">← Back to Dashboard</Link>
+        <div className="chart-container" style={{ height: '350px' }}>
+          {loadingChart ? (
+            <div className="skeleton-chart"></div>
+          ) : chartDataArr.length ? (
+            <Bar data={chartData} options={options} />
+          ) : (
+            <p>No payment data for this bill.</p>
+          )}
+        </div>
+      </section>
+
+      {/* --- Bill Details Panel --- */}
+      <section className="info-section">
+        <h3>Bill Information</h3>
+
+        {loadingInfo ? (
+          <div className="details-grid skeleton-details"></div>
+        ) : billInfo ? (
+          <div className="details-grid">
+            <div><strong>Bill Name:</strong> {billInfo?.billName || '—'}</div>
+            <div><strong>Bill ID:</strong> {billInfo?.id || '—'}</div>
+            <div><strong>Organization:</strong> {billInfo?.organizationName || '—'}</div>
+            <div><strong>Account Number:</strong> {billInfo?.accountNumber || '—'}</div>
+            <div>
+              <strong>Typical Amount:</strong> {Number.isFinite(parseFloat(billInfo?.typicalAmount)) ? formatCurrency(billInfo.typicalAmount) : '—'}
+            </div>
+            <div><strong>Frequency:</strong> {billInfo?.frequency || '—'}</div>
+            <div><strong>Typical Due Day:</strong> {billInfo?.dueDay ?? '—'}</div>
+            <div><strong>Created At:</strong> {formatDate(billInfo?.billCreatedAt)}</div>
+            <div><strong>Updated At:</strong> {formatDate(billInfo?.billUpdatedAt)}</div>
+            <div><strong>Created By:</strong> {billInfo?.creatorName || '—'}</div>
+            <div className="notes-full">
+              <strong>Notes:</strong>
+              <p>{billInfo?.notes || '—'}</p>
+            </div>
+          </div>
+        ) : (
+          <p className="error-message">Could not load bill info.</p>
+        )}
+      </section>
+
+      {/* Actions */}
+      <div className="info-actions">
+        <Link
+          to={`/organizations/${organizationId}/bills/${billId}/edit`}
+          className="action-link edit-link"
+        >
+          ✏️ Edit Bill
+        </Link>
+
+        <Link to="/" className="action-link back-link">
+          ← Back to Dashboard
+        </Link>
       </div>
     </div>
   );

@@ -1,0 +1,85 @@
+/* my-bill-tracker-frontend/src/pages/BillDetails.css */
+.info-page-container {
+  max-width: 900px;
+  margin: auto;
+  padding: 2rem;
+  color: #eee;
+}
+
+.breadcrumbs {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.breadcrumbs a {
+  color: #80bfff;
+  text-decoration: none;
+}
+
+.breadcrumbs .current {
+  opacity: 0.6;
+}
+
+.info-title {
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.5px;
+}
+
+.info-section {
+  background: rgba(255,255,255,0.05);
+  padding: 1.2rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.info-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.8rem 1rem;
+}
+
+.notes-full {
+  grid-column: 1 / -1;
+}
+
+.notes-full p {
+  margin-top: 0.25rem;
+  white-space: pre-wrap;
+  opacity: 0.9;
+}
+
+/* Skeleton Loading */
+.skeleton-chart {
+  height: 350px;
+  background: linear-gradient(90deg, #222, #333, #222);
+  background-size: 200% 100%;
+  animation: pulse 1.2s infinite;
+  border-radius: 8px;
+}
+
+.skeleton-details {
+  height: 150px;
+  background: linear-gradient(90deg, #222, #333, #222);
+  background-size: 200% 100%;
+  animation: pulse 1.2s infinite;
+  border-radius: 8px;
+}
+
+@keyframes pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.info-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+}
