@@ -125,3 +125,30 @@
 .chart-container canvas {
   max-height: 100%;
 }
+
+.info-section {
+  margin-top: 1.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+}
+
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.info-table td, .info-table th {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-table th {
+  text-align: left;
+  color: #a0aec0;
+}
+
+.info-section h3 {
+  margin-bottom: 0.5rem;
+}

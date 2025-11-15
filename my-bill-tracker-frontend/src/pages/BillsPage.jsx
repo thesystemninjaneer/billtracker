@@ -215,7 +215,7 @@ function BillsPage() {
       ) : (
         // --- LIST VIEW ---
         <>
-          {/* FIX: checkbox to be left-justified above the list */}
+          {/* checkbox to be left-justified above the list */}
           <div className="form-group" style={{ marginBottom: '1rem', textAlign: 'left' }}>
             <label>
                 <input type="checkbox" checked={showInactive} onChange={() => setShowInactive(prev => !prev)} />

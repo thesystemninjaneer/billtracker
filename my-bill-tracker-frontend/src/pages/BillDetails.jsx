@@ -1,4 +1,5 @@
 // my-bill-tracker-frontend/src/pages/InfoPage.jsx
+// NOTE: This file has been replaced by BillDetails.jsx and is no longer in use.
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -17,7 +18,7 @@ import './Forms.css';
 // Register base Chart.js components
 ChartJS.register(BarElement, CategoryScale, LinearScale, Legend, Tooltip);
 
-function InfoPage() {
+function BillDetails() {
   const { id: organizationId } = useParams();
   const { authAxios } = useAuth();
 
@@ -207,4 +208,4 @@ function InfoPage() {
   );
 }
 
-export default InfoPage;
+export default BillDetails;

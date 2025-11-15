@@ -390,7 +390,6 @@ function Dashboard() {
                                         <div className="item-actions">
                                             {org.website && <a href={org.website} target="_blank" rel="noopener noreferrer" className="action-link website-link">Visit Website</a>}
                                             <Link to={`/organizations/${org.id}`} className="action-link edit-link">Edit</Link>
-                                            <Link to={`/organizations/${org.id}/info`} className="action-link info-link">Info</Link>
                                         </div>
                                     </div>
                                     {/* Render recurring bills if they exist */}
@@ -400,6 +399,7 @@ function Dashboard() {
                                                 <li key={bill.id} className="bill-item sub-item">
                                                     <span>{bill.billName} (Typically ~{formatCurrency(bill.typicalAmount)})</span>
                                                     <Link to={`/record-payment?organizationId=${org.id}&billId=${bill.id}`} className="action-link record-link">Record Payment</Link>
+                                                    <Link to={`/organizations/${org.id}/info`} className="action-link info-link" >Info </Link>
                                                 </li>
                                             ))}
                                         </ul>
