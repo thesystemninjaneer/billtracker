@@ -419,6 +419,57 @@ app.delete('/bills/:id', async (req, res) => {
   }
 });
 
+/**
+ * @route GET /bills/:id/info
+ * @desc Returns detailed info for a specific bill
+ * @access Private
+ */
+app.get('/bills/:id/info', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    try {
+        const [rows] = await pool.execute(
+            `SELECT
+                b.id AS id,
+                b.bill_name AS billName,
+                b.due_day AS dueDay,
+                b.typical_amount AS typicalAmount,
+                b.frequency,
+                b.notes,
+                b.created_at AS billCreatedAt,
+                b.updated_at AS billUpdatedAt,
+                b.is_active AS isActive,
+
+                o.id AS organizationId,
+                o.name AS organizationName,
+                o.account_number AS accountNumber,
+                o.website,
+                o.contact_info AS contactInfo,
+                o.created_at AS orgCreatedAt,
+                o.updated_at AS orgUpdatedAt,
+
+                u.username AS creatorName
+            FROM bills b
+            JOIN organizations o ON b.organization_id = o.id
+            JOIN users u ON b.user_id = u.id
+            WHERE b.id = ? AND b.user_id = ?
+            LIMIT 1`,
+            [id, userId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "Bill not found or unauthorized." });
+        }
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error("Error fetching bill info:", err);
+        res.status(500).json({ message: "Server error fetching bill info" });
+    }
+});
+
+
 // --- API Endpoints for Payments (Individual Records) ---
 
 /**
@@ -615,16 +666,17 @@ app.get('/payments/organization/:orgId/timeseries', async (req, res) => {
  * @desc Show all payments made or due for each day in a given month
  *       (YYYY-MM), defaulting  to the current month if unspecified.
  * @access Private
+ *
+ * Ex:
+ * Request: GET /payments/monthly-overview?month=2025-11
+ * Response:
+ * {
+ *   "month": "2025-11",
+ *   "labels": [ "2025-11-01", "2025-11-02", "2025-11-03", "...", "2025-11-30" ],
+ *   "paid": [120, 0, 80, 0, 50, 0, ...],
+ *   "due": [200, 100, 0, 50, 0, 0, ...]
+ * }
  */
-// Ex:
-// Request: GET /payments/monthly-overview?month=2025-11
-// Response:
-// {
-//   "month": "2025-11",
-//   "labels": [ "2025-11-01", "2025-11-02", "2025-11-03", "...", "2025-11-30" ],
-//   "paid": [120, 0, 80, 0, 50, 0, ...],
-//   "due": [200, 100, 0, 50, 0, 0, ...]
-// }
 app.get('/payments/monthly-overview', authenticateToken, async (req, res) => {
   try {
     // 1. Determine which month to analyze

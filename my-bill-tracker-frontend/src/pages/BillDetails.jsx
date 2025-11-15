@@ -19,13 +19,17 @@ import './Forms.css';
 ChartJS.register(BarElement, CategoryScale, LinearScale, Legend, Tooltip);
 
 function BillDetails() {
-  const { id: organizationId } = useParams();
+  const { organizationId, billId } = useParams();
   const { authAxios } = useAuth();
 
   const [range, setRange] = useState('3m');
   const [data, setData] = useState([]);
   const [orgName, setOrgName] = useState('');
+  const [billInfo, setBillInfo] = useState(null);
+
   const [loading, setLoading] = useState(true);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+
   const [error, setError] = useState('');
 
   const ranges = [
@@ -37,6 +41,9 @@ function BillDetails() {
     { label: 'All', value: 'all' },
   ];
 
+  // -----------------------------
+  // 1. Existing TIMESERIES fetch
+  // -----------------------------
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -62,6 +69,30 @@ function BillDetails() {
     fetchData();
   }, [organizationId, range, authAxios]);
 
+  // -----------------------------
+  // 2. NEW Bill Info Fetch
+  // -----------------------------
+  useEffect(() => {
+    const fetchBillInfo = async () => {
+      try {
+        setLoadingInfo(true);
+        const res = await authAxios(
+          `${config.BILL_PAYMENT_API_BASE_URL}/bills/${billId}/info`
+        );
+        if (!res.ok) throw new Error('Failed to fetch bill info');
+
+        const info = await res.json();
+        setBillInfo(info);
+      } catch (err) {
+        console.error('Error fetching bill info:', err);
+      } finally {
+        setLoadingInfo(false);
+      }
+    };
+
+    fetchBillInfo();
+  }, [billId, authAxios]);
+
   const formatCurrency = (amount) =>
     new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -82,10 +113,9 @@ function BillDetails() {
       {
         label: 'Total Paid',
         data: data.map((d) => d.total),
-        backgroundColor: 'rgba(99, 179, 237, 0.6)', // bright blue
+        backgroundColor: 'rgba(99, 179, 237, 0.6)',
         borderColor: '#60a5fa',
         borderWidth: 1,
-        hoverBackgroundColor: 'rgba(99, 179, 237, 0.8)',
       },
     ],
   };
@@ -124,85 +154,66 @@ function BillDetails() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: true,
-        labels: { color: '#ccc' },
-      },
+      legend: { display: true, labels: { color: '#ccc' } },
       tooltip: {
         backgroundColor: 'rgba(30,30,30,0.85)',
         titleColor: '#fff',
         bodyColor: '#eee',
-        callbacks: {
-          label: (ctx) => formatCurrency(ctx.parsed.y),
-        },
+        callbacks: { label: (ctx) => formatCurrency(ctx.parsed.y) },
       },
     },
     scales: {
-      x: {
-        title: { display: true, text: 'Date', color: '#ccc' },
-        ticks: {
-          color: '#ccc',
-          autoSkip: true,
-          maxRotation: 0,
-        },
-        grid: {
-          color: 'rgba(255,255,255,0.1)',
-          borderDash: [3, 3],
-        },
-      },
-      y: {
-        title: { display: true, text: 'Amount ($)', color: '#ccc' },
-        ticks: { color: '#ccc' },
-        grid: { color: 'rgba(255,255,255,0.1)', borderDash: [3, 3] },
-        beginAtZero: true,
-      },
-    },
-    backgroundColor: 'transparent', // ✅ fits dark mode
+      x: { ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+      y: { ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+    }
   };
 
-  if (loading)
-    return <div className="form-container">Loading chart...</div>;
-  if (error)
-    return <div className="form-container error-message">{error}</div>;
+  if (loading) return <div className="form-container">Loading chart...</div>;
 
   return (
     <div className="form-container">
-      <h2>Payment History for {orgName || `Organization #${organizationId}`}</h2>
+      <h2>Payment History for {orgName}</h2>
 
       <div className="form-group">
         <label htmlFor="range">Time Range:</label>
-        <select
-          id="range"
-          value={range}
-          onChange={(e) => setRange(e.target.value)}
-        >
+        <select id="range" value={range} onChange={(e) => setRange(e.target.value)}>
           {ranges.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-            </option>
+            <option key={r.value} value={r.value}>{r.label}</option>
           ))}
         </select>
       </div>
 
-      <div
-        className="chart-container"
-        style={{
-          height: '350px',
-          marginTop: '20px',
-          backgroundColor: 'transparent',
-        }}
-      >
-        {data.length > 0 ? (
-          <Bar data={chartData} options={options} />
-        ) : (
-          <p>No payment data for selected range.</p>
-        )}
+      <div className="chart-container" style={{ height: '350px', marginTop: '20px' }}>
+        {data.length > 0 ? <Bar data={chartData} options={options} /> : <p>No data.</p>}
       </div>
 
+      {/* ------------------------------ */}
+      {/*      BILL INFORMATION PANEL     */}
+      {/* ------------------------------ */}
+      <h3 style={{ marginTop: '2rem' }}>Bill Details</h3>
+
+      {loadingInfo ? (
+        <p>Loading bill info…</p>
+      ) : billInfo ? (
+        <div className="bill-info-box">
+          <p><strong>Bill Name:</strong> {billInfo.billName}</p>
+          <p><strong>Bill ID:</strong> {billInfo.billId}</p>
+          <p><strong>Organization:</strong> {billInfo.organizationName}</p>
+          <p><strong>Account:</strong> {billInfo.accountNumber}</p>
+          <p><strong>Frequency:</strong> {billInfo.frequency}</p>
+          <p><strong>Due Day:</strong> {billInfo.dueDay ?? '—'}</p>
+          <p><strong>Typical Amount:</strong> {billInfo.typicalAmount ? formatCurrency(billInfo.typicalAmount) : '—'}</p>
+          <p><strong>Notes:</strong> {billInfo.notes || '—'}</p>
+          <p><strong>Created:</strong> {billInfo.billCreatedAt?.split('T')[0]}</p>
+          <p><strong>Updated:</strong> {billInfo.billUpdatedAt?.split('T')[0]}</p>
+          <p><strong>Creator:</strong> {billInfo.creatorName}</p>
+        </div>
+      ) : (
+        <p>No bill info found.</p>
+      )}
+
       <div className="form-actions" style={{ marginTop: '1rem' }}>
-        <Link to="/" className="action-link back-link">
-          ← Back to Dashboard
-        </Link>
+        <Link to="/" className="action-link back-link">← Back to Dashboard</Link>
       </div>
     </div>
   );

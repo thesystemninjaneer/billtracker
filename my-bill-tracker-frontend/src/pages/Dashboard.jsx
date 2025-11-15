@@ -399,12 +399,12 @@ function Dashboard() {
                                                 <li key={bill.id} className="bill-item sub-item">
                                                     <span>{bill.billName} (Typically ~{formatCurrency(bill.typicalAmount)})</span>
                                                     <Link to={`/record-payment?organizationId=${org.id}&billId=${bill.id}`} className="action-link record-link">Record Payment</Link>
-                                                    <Link to={`/organizations/${org.id}/info`} className="action-link info-link" >Info </Link>
+                                                    <Link to={`/organizations/${org.id}/bills/${bill.id}/info`} className="action-link info-link" >Info </Link>
                                                 </li>
                                             ))}
                                         </ul>
                                     )}
-                                    {/* FIX: Render a generic "Record Payment" button if NO recurring bills exist for this org */}
+                                    {/* Render a generic "Record Payment" button if NO recurring bills exist for this org */}
                                     {billsForThisOrg.length === 0 && (
                                         <div className="ad-hoc-payment-link">
                                             <Link to={`/record-payment?organizationId=${org.id}`} className="action-link record-link">Record Ad-Hoc Payment</Link>

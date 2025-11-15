@@ -138,6 +138,7 @@ function AppContent() {
           <Route path="/organizations/:id" element={<ProtectedRoute><OrganizationsPage /></ProtectedRoute>} />
           <Route path="/organizations/:id/info" element={<ProtectedRoute><BillDetails /></ProtectedRoute>} />
 
+          <Route path="/organizations/:organizationId/bills/:billId/info" element={<ProtectedRoute><BillDetails /></ProtectedRoute>} />
           <Route path="/bills" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
           <Route path="/bills/:id" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
           <Route path="/record-payment" element={<ProtectedRoute><RecordPaymentForm /></ProtectedRoute>} />
