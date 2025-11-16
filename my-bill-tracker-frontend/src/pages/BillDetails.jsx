@@ -229,7 +229,7 @@ function BillDetails() {
       {/* Actions */}
       <div className="info-actions">
         <Link
-          to={`/organizations/${organizationId}/bills/${billId}/edit`}
+          to={`/bills/${billId}`}
           className="action-link edit-link"
         >
           ✏️ Edit Bill
