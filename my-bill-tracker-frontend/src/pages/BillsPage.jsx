@@ -30,14 +30,16 @@ function BillsPage() {
   });
 
   const [showInactive, setShowInactive] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Part 2: Fetch Orgs, Bills & Bill by ID
   // Load all bills
-  const fetchBills = useCallback(async () => {
+  const fetchBills = useCallback(async (search = '') => {
 
     try {
       setLoading(true);
-      const query = showInactive ? '?includeInactive=true' : '';
+      const query = `?search=${encodeURIComponent(search)}${showInactive ? '&includeInactive=true' : ''}`;
+      
       const response = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills${query}`);
       const data = await response.json();
       setBills(data || []);
@@ -55,7 +57,7 @@ function BillsPage() {
         // Fetch organizations and bills together
         const [orgsRes, billsRes] = await Promise.all([
           authAxios(`${config.ORGANIZATION_API_BASE_URL}?limit=1000`),
-          authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills${showInactive ? '?includeInactive=true' : ''}`)
+          authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/bills?search=${encodeURIComponent(searchTerm)}${showInactive ? '&includeInactive=true' : ''}`)
         ]);
 
         if (!orgsRes.ok || !billsRes.ok) throw new Error("Failed to load page data.");
@@ -94,6 +96,15 @@ function BillsPage() {
         }
       }
     }, [editId, bills]);
+
+  // Debounce search
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      fetchBills(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(delay);
+  }, [searchTerm, fetchBills]);
 
 
   // Part 3 form handlers
@@ -221,6 +232,15 @@ function BillsPage() {
                 <input type="checkbox" checked={showInactive} onChange={() => setShowInactive(prev => !prev)} />
                 {' '}Show Inactive Bills
             </label>
+          </div>
+          <div className="mb-6">
+            <input
+              type="text"
+              placeholder="Search bills..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full p-3 border rounded-md"
+            />
           </div>
           <section className="dashboard-section">
             {loading ? <p>Loading bills...</p> : bills.length === 0 ? (
