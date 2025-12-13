@@ -277,12 +277,14 @@ app.post('/bills', async (req, res) => {
 /**
  * @route GET /bills
  * @desc Get all recurring bill entries for a user, with organization name.
- *       Supports ?includeInactive=true to include inactive bills.
+ * Supports ?includeInactive=true to include inactive bills, and ?search=... to filter.
  * @access Private
  */
 app.get('/bills', async (req, res) => {
   const user_id = req.user.id;
   const includeInactive = req.query.includeInactive === 'true';
+  // 1. Extract the search term from the query string
+  const search = req.query.search?.trim() || ''; 
 
   try {
     let query = `
@@ -294,14 +296,26 @@ app.get('/bills', async (req, res) => {
       WHERE b.user_id = ?
     `;
 
+    // Start with just the user_id parameter
     const queryParams = [user_id];
 
     if (!includeInactive) {
       query += ` AND b.is_active = 1`;
     }
 
+    // 2. Conditionally add the search filter
+    if (search) {
+        // Filter by organization name OR bill name
+        query += ` AND (o.name LIKE ? OR b.bill_name LIKE ?)`;
+        const searchTermPattern = `%${search}%`; 
+        
+        // Add the search pattern twice to match the two placeholders above
+        queryParams.push(searchTermPattern, searchTermPattern);
+    }
+
     query += ` ORDER BY o.name, b.bill_name`;
 
+    // 3. Execute the query with all parameters
     const [rows] = await pool.execute(query, queryParams);
     res.status(200).json(rows);
 
