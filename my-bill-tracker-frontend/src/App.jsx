@@ -148,7 +148,7 @@ function AppContent() {
       </main>
       <NotificationListener /> {/* SSE listener */}
       <NotificationsContainer /> {/* Toast notifications */}
-      <Footer /> {/* ✅ Footer with version + Donate link */}
+      <Footer /> {/* ✅ Footer with version + Contribute link */}
     </>
   );
 }

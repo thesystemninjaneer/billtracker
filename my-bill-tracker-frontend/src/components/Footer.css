@@ -18,7 +18,7 @@
   flex-shrink: 0;
 }
 
-.donate-btn {
+.contribute-btn {
   background-color: #61dafb;
   color: #282c34;
   border: none;
@@ -29,7 +29,7 @@
   transition: background-color 0.3s ease;
 }
 
-.donate-btn:hover {
+.contribute-btn:hover {
   background-color: #52c0e8;
 }
 
