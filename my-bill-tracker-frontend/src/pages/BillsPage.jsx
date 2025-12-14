@@ -250,7 +250,15 @@ function BillsPage() {
                 <li key={bill.id} className="bill-item">
                     <div>
                     <span className="bill-org">{bill.organizationName}</span>
-                    {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
+                    {bill.billName && (
+                      <Link 
+                        to={`/organizations/${bill.organizationId}/bills/${bill.id}/info`} 
+                        className="bill-name"
+                        style={{ marginLeft: '5px', color: '#3182ce', textDecoration: 'none' }}
+                      > 
+                        ({bill.billName})
+                      </Link>
+                    )}
                     {bill.isActive === 0 && <span style={{ color: 'red', marginLeft: '10px' }}>(Inactive)</span>}
                     </div>
                     <div className="item-actions">
