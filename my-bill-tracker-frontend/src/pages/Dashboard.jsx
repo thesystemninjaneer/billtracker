@@ -142,7 +142,7 @@ function Dashboard() {
             window.history.replaceState({}, document.title)
         }
     }, [isAuthenticated, loading, authAxios, location.state?.refresh]);
-    
+
     // 🔍 Debug: detect any recently paid rows missing a payment id
     useEffect(() => {
         const badRows = recentlyPaidBills.filter(bill => !bill?.id);
@@ -440,34 +440,34 @@ function Dashboard() {
 
             {/* Recently Paid Section */}
             <section className="dashboard-section recently-paid">
-                 <h3 onClick={() => setIsRecentlyPaidCollapsed(!isRecentlyPaidCollapsed)} className="collapsible-header">
+                <h3 onClick={() => setIsRecentlyPaidCollapsed(!isRecentlyPaidCollapsed)} className="collapsible-header">
                     <FontAwesomeIcon icon={isRecentlyPaidCollapsed ? faChevronRight : faChevronDown} /> ✅ Recently Paid Bills
                 </h3>
                 {!isRecentlyPaidCollapsed && (
                     <>
-                        <ul>
-                            {recentlyPaidBillsToShow.length > 0 ? recentlyPaidBillsToShow.map(bill => (
-                                    <li key={bill.id} className="bill-item paid-item">
-                                        <span className="bill-org">{bill.organizationName}</span>
-                                        {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
-                                        <span> - Paid: </span>
-                                        {/* Updated: Wrap amountPaid in a Link to view payment details */}
-                                        {bill.id ? (
-                                            <Link to={`/payments/${bill.id}`} className="paid-amount-link">
-                                                {formatCurrency(bill.amountPaid)}
-                                            </Link>
-                                            ) : (
-                                            <span>{formatCurrency(bill.amountPaid)}</span>
-                                            )}
-                                        <span className="paid-date"> on {formatDate(bill.datePaid)}</span>
-                                     </li>
-                            )) : <p>No recently paid bills.</p>}
-                        </ul>
-                        {hasMorePaidBills && (
-                            <button onClick={() => setPaidBillsLimit(prev => prev + 10)} className="load-more-btn">
-                                Load more...
-                            </button>
-                        )}
+                    <ul>
+                        {recentlyPaidBillsToShow.length > 0 ? recentlyPaidBillsToShow.map(bill => (
+                        <li key={bill.id} className="bill-item paid-item">
+                            <div className="paid-info-left">
+                            <span className="bill-org">{bill.organizationName}</span>
+                            {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
+                            <span> - Paid: {formatCurrency(bill.amountPaid)}</span>
+                            <span className="paid-date"> on {formatDate(bill.datePaid)}</span>
+                            {bill.confirmationCode && <span className="confirmation-code"> | Confirmation: {bill.confirmationCode}</span>}
+                            </div>
+                            {bill.id && (
+                            <Link to={`/payments/${bill.id}`} className="action-link info-link">
+                                Info
+                            </Link>
+                            )}
+                        </li>
+                        )) : <p>No recently paid bills.</p>}
+                    </ul>
+                    {hasMorePaidBills && (
+                        <button onClick={() => setPaidBillsLimit(prev => prev + 10)} className="load-more-btn">
+                        Load more...
+                        </button>
+                    )}
                     </>
                 )}
             </section>
