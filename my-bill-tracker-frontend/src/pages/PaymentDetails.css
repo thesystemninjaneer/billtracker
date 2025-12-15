@@ -1,0 +1,230 @@
+/* my-bill-tracker-frontend/src/pages/PaymentDetails.css */
+/* Inherits base styles from BillDetails.css structure */
+
+.info-page-container {
+  max-width: 900px;
+  margin: auto;
+  padding: 2rem;
+  color: #eee;
+  font-family: 'Inter', sans-serif;
+}
+
+.breadcrumbs {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.breadcrumbs a {
+  color: #80bfff;
+  text-decoration: none;
+}
+
+.breadcrumbs .current {
+  opacity: 0.6;
+}
+
+.info-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.info-title {
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.info-section {
+  background: rgba(255,255,255,0.05);
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.info-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.info-section h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #ddd;
+}
+
+/* Grid Layout */
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.details-grid strong {
+    display: block;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #888;
+    margin-bottom: 0.3rem;
+}
+
+.details-grid .value {
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.details-grid .value-large {
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.details-grid .highlight-green {
+    color: #4ade80;
+}
+
+.details-grid .code-font {
+    font-family: monospace;
+    background: rgba(0,0,0,0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.details-grid .small-text {
+    font-size: 0.9rem;
+    color: #aaa;
+}
+
+.notes-full {
+  grid-column: 1 / -1;
+  background: rgba(0,0,0,0.15);
+  padding: 1rem;
+  border-radius: 6px;
+  margin-top: 0.5rem;
+}
+
+.notes-full p {
+  margin-top: 0.25rem;
+  white-space: pre-wrap;
+  opacity: 0.9;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* Status Badge */
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-badge.paid {
+    background-color: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+    border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.status-badge.pending {
+    background-color: rgba(250, 204, 21, 0.2);
+    color: #facc15;
+    border: 1px solid rgba(250, 204, 21, 0.3);
+}
+
+/* Edit Form Styles */
+.edit-payment-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #bbb;
+}
+
+.form-group input, 
+.form-group textarea {
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background-color: #222;
+    color: white;
+    font-size: 1rem;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    border-color: #3182ce;
+    outline: none;
+}
+
+.form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+/* Actions */
+.action-link {
+  text-decoration: none;
+  display: inline-block;
+  transition: opacity 0.2s;
+  cursor: pointer;
+}
+
+.action-link:hover {
+  opacity: 0.8;
+}
+
+.edit-link {
+    background-color: #3182ce;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    border: none;
+}
+
+.back-link {
+    color: #80bfff;
+}
+
+/* Loading */
+.skeleton-details {
+  height: 200px;
+  background: linear-gradient(90deg, #222, #333, #222);
+  background-size: 200% 100%;
+  animation: pulse 1.2s infinite;
+  border-radius: 8px;
+}
+
+@keyframes pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (max-width: 600px) {
+    .edit-payment-form {
+        grid-template-columns: 1fr;
+    }
+}

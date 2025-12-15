@@ -18,7 +18,7 @@ function Footer() {
     getVersion();
   }, []);
 
-  const handleDonateClick = () => {
+  const handleContributeClick = () => {
     // ✅ For now, redirect to a donation page or external service
     window.open("https://github.com/thesystemninjaneer/billtracker", "_blank");
   };
@@ -32,8 +32,8 @@ function Footer() {
       </div>
 
       <div className="footer-right">
-        <button onClick={handleDonateClick} className="donate-btn">
-          ❤️ Donate
+        <button onClick={handleContributeClick} className="contribute-btn">
+          ❤️ Contribute
         </button>
       </div>
     </footer>

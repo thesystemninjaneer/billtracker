@@ -277,12 +277,14 @@ app.post('/bills', async (req, res) => {
 /**
  * @route GET /bills
  * @desc Get all recurring bill entries for a user, with organization name.
- *       Supports ?includeInactive=true to include inactive bills.
+ * Supports ?includeInactive=true to include inactive bills, and ?search=... to filter.
  * @access Private
  */
 app.get('/bills', async (req, res) => {
   const user_id = req.user.id;
   const includeInactive = req.query.includeInactive === 'true';
+  // 1. Extract the search term from the query string
+  const search = req.query.search?.trim() || ''; 
 
   try {
     let query = `
@@ -294,14 +296,26 @@ app.get('/bills', async (req, res) => {
       WHERE b.user_id = ?
     `;
 
+    // Start with just the user_id parameter
     const queryParams = [user_id];
 
     if (!includeInactive) {
       query += ` AND b.is_active = 1`;
     }
 
+    // 2. Conditionally add the search filter
+    if (search) {
+        // Filter by organization name OR bill name
+        query += ` AND (o.name LIKE ? OR b.bill_name LIKE ?)`;
+        const searchTermPattern = `%${search}%`; 
+        
+        // Add the search pattern twice to match the two placeholders above
+        queryParams.push(searchTermPattern, searchTermPattern);
+    }
+
     query += ` ORDER BY o.name, b.bill_name`;
 
+    // 3. Execute the query with all parameters
     const [rows] = await pool.execute(query, queryParams);
     res.status(200).json(rows);
 
@@ -418,6 +432,57 @@ app.delete('/bills/:id', async (req, res) => {
     res.status(500).json({ message: 'Server error deleting bill entry.' });
   }
 });
+
+/**
+ * @route GET /bills/:id/info
+ * @desc Returns detailed info for a specific bill
+ * @access Private
+ */
+app.get('/bills/:id/info', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    try {
+        const [rows] = await pool.execute(
+            `SELECT
+                b.id AS id,
+                b.bill_name AS billName,
+                b.due_day AS dueDay,
+                b.typical_amount AS typicalAmount,
+                b.frequency,
+                b.notes,
+                b.created_at AS billCreatedAt,
+                b.updated_at AS billUpdatedAt,
+                b.is_active AS isActive,
+
+                o.id AS organizationId,
+                o.name AS organizationName,
+                o.account_number AS accountNumber,
+                o.website,
+                o.contact_info AS contactInfo,
+                o.created_at AS orgCreatedAt,
+                o.updated_at AS orgUpdatedAt,
+
+                u.username AS creatorName
+            FROM bills b
+            JOIN organizations o ON b.organization_id = o.id
+            JOIN users u ON b.user_id = u.id
+            WHERE b.id = ? AND b.user_id = ?
+            LIMIT 1`,
+            [id, userId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "Bill not found or unauthorized." });
+        }
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error("Error fetching bill info:", err);
+        res.status(500).json({ message: "Server error fetching bill info" });
+    }
+});
+
 
 // --- API Endpoints for Payments (Individual Records) ---
 
@@ -615,16 +680,17 @@ app.get('/payments/organization/:orgId/timeseries', async (req, res) => {
  * @desc Show all payments made or due for each day in a given month
  *       (YYYY-MM), defaulting  to the current month if unspecified.
  * @access Private
+ *
+ * Ex:
+ * Request: GET /payments/monthly-overview?month=2025-11
+ * Response:
+ * {
+ *   "month": "2025-11",
+ *   "labels": [ "2025-11-01", "2025-11-02", "2025-11-03", "...", "2025-11-30" ],
+ *   "paid": [120, 0, 80, 0, 50, 0, ...],
+ *   "due": [200, 100, 0, 50, 0, 0, ...]
+ * }
  */
-// Ex:
-// Request: GET /payments/monthly-overview?month=2025-11
-// Response:
-// {
-//   "month": "2025-11",
-//   "labels": [ "2025-11-01", "2025-11-02", "2025-11-03", "...", "2025-11-30" ],
-//   "paid": [120, 0, 80, 0, 50, 0, ...],
-//   "due": [200, 100, 0, 50, 0, 0, ...]
-// }
 app.get('/payments/monthly-overview', authenticateToken, async (req, res) => {
   try {
     // 1. Determine which month to analyze
@@ -898,6 +964,9 @@ app.put('/payments/:id', async (req, res) => {
     const { datePaid, amountPaid: newPaymentAmount, confirmationCode, notes } = req.body;
 
     // Validate the input for this specific action
+    if (req.path.includes('/edit')) {
+      return res.status(400).json({ message: 'Wrong endpoint for editing.' });
+    }
     if (newPaymentAmount == null || !datePaid) {
         return res.status(400).json({ message: 'To record a payment, a valid amountPaid and datePaid are required.' });
     }
@@ -974,6 +1043,39 @@ app.delete('/payments/:id', async (req, res) => {
     console.error('Error deleting payment record:', error);
     res.status(500).json({ message: 'Server error deleting payment record.' });
   }
+});
+
+/**
+ * @route PUT /payments/:id/edit
+ * @desc Edit an existing payment record (replace values)
+ * @access Private
+ */
+app.put('/payments/:id/edit', async (req, res) => {
+    const { id } = req.params;
+    const user_id = req.user.id;
+    const { amountPaid, datePaid, confirmationCode, notes } = req.body;
+
+    if (amountPaid == null || !datePaid) {
+        return res.status(400).json({ message: 'amountPaid and datePaid are required.' });
+    }
+
+    try {
+        const [result] = await pool.execute(
+            `UPDATE payments
+             SET amount_paid = ?, date_paid = ?, confirmation_code = ?, notes = ?
+             WHERE id = ? AND user_id = ?`,
+            [amountPaid, datePaid, confirmationCode || null, notes || null, id, user_id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Payment not found or not authorized.' });
+        }
+
+        res.status(200).json({ message: 'Payment updated successfully.' });
+    } catch (err) {
+        console.error('Error editing payment:', err);
+        res.status(500).json({ message: 'Server error editing payment.' });
+    }
 });
 
 // API Endpoint to send a test Slack notification

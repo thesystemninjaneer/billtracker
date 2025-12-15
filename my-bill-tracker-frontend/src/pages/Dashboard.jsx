@@ -143,6 +143,13 @@ function Dashboard() {
         }
     }, [isAuthenticated, loading, authAxios, location.state?.refresh]);
 
+    useEffect(() => {
+        const badRows = recentlyPaidBills.filter(bill => !bill?.id);
+        if (badRows.length > 0) {
+            console.error('Recently paid bills missing payment id');
+        }
+    }, [recentlyPaidBills]);
+
     const formatCurrency = (amount) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
     
     const formatDate = (dateString) => {
@@ -360,7 +367,17 @@ function Dashboard() {
                             <li key={bill.id} className="bill-item upcoming-item">
                                 <div>
                                     <span className="bill-org">{bill.organizationName}</span>
-                                    {bill.billName && <span className="bill-name"> ({bill.billName})</span>} -
+                                    {bill.billName && (
+                                        <Link 
+                                            to={`/organizations/${bill.organizationId}/bills/${bill.billId}/info`}
+                                            className="bill-name"
+                                            style={{ marginLeft: '5px', color: '#2563eb', textDecoration: 'none' }}
+                                        >
+                                            ({bill.billName})
+                                        </Link>
+                                    )} 
+                                    {!bill.billName && ' - '}
+                                    {bill.billName && ' - '}
                                     <span className="due-date"> Due {formatDate(bill.dueDate)}: </span>
                                     <span>{formatCurrency(bill.amountDue)}</span>
                                 </div>
@@ -390,7 +407,6 @@ function Dashboard() {
                                         <div className="item-actions">
                                             {org.website && <a href={org.website} target="_blank" rel="noopener noreferrer" className="action-link website-link">Visit Website</a>}
                                             <Link to={`/organizations/${org.id}`} className="action-link edit-link">Edit</Link>
-                                            <Link to={`/organizations/${org.id}/info`} className="action-link info-link">Info</Link>
                                         </div>
                                     </div>
                                     {/* Render recurring bills if they exist */}
@@ -400,11 +416,12 @@ function Dashboard() {
                                                 <li key={bill.id} className="bill-item sub-item">
                                                     <span>{bill.billName} (Typically ~{formatCurrency(bill.typicalAmount)})</span>
                                                     <Link to={`/record-payment?organizationId=${org.id}&billId=${bill.id}`} className="action-link record-link">Record Payment</Link>
+                                                    <Link to={`/organizations/${org.id}/bills/${bill.id}/info`} className="action-link info-link" >Info </Link>
                                                 </li>
                                             ))}
                                         </ul>
                                     )}
-                                    {/* FIX: Render a generic "Record Payment" button if NO recurring bills exist for this org */}
+                                    {/* Render a generic "Record Payment" button if NO recurring bills exist for this org */}
                                     {billsForThisOrg.length === 0 && (
                                         <div className="ad-hoc-payment-link">
                                             <Link to={`/record-payment?organizationId=${org.id}`} className="action-link record-link">Record Ad-Hoc Payment</Link>
@@ -419,26 +436,34 @@ function Dashboard() {
 
             {/* Recently Paid Section */}
             <section className="dashboard-section recently-paid">
-                 <h3 onClick={() => setIsRecentlyPaidCollapsed(!isRecentlyPaidCollapsed)} className="collapsible-header">
+                <h3 onClick={() => setIsRecentlyPaidCollapsed(!isRecentlyPaidCollapsed)} className="collapsible-header">
                     <FontAwesomeIcon icon={isRecentlyPaidCollapsed ? faChevronRight : faChevronDown} /> ✅ Recently Paid Bills
                 </h3>
                 {!isRecentlyPaidCollapsed && (
                     <>
-                        <ul>
-                            {recentlyPaidBillsToShow.length > 0 ? recentlyPaidBillsToShow.map(bill => (
-                                    <li key={bill.id} className="bill-item paid-item">
-                                        <span className="bill-org">{bill.organizationName}</span>
-                                        {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
-                                        <span> - Paid: {formatCurrency(bill.amountPaid)}</span>
-                                        <span className="paid-date"> on {formatDate(bill.datePaid)}</span>
-                                    </li>
-                            )) : <p>No recently paid bills.</p>}
-                        </ul>
-                        {hasMorePaidBills && (
-                            <button onClick={() => setPaidBillsLimit(prev => prev + 10)} className="load-more-btn">
-                                Load more...
-                            </button>
-                        )}
+                    <ul>
+                        {recentlyPaidBillsToShow.length > 0 ? recentlyPaidBillsToShow.map(bill => (
+                        <li key={bill.id} className="bill-item paid-item">
+                            <div className="paid-info-left">
+                            <span className="bill-org">{bill.organizationName}</span>
+                            {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
+                            <span> - Paid: {formatCurrency(bill.amountPaid)}</span>
+                            <span className="paid-date"> on {formatDate(bill.datePaid)}</span>
+                            {bill.confirmationCode && <span className="confirmation-code"> | Confirmation: {bill.confirmationCode}</span>}
+                            </div>
+                            {bill.id && (
+                            <Link to={`/payments/${bill.id}`} className="action-link info-link">
+                                Info
+                            </Link>
+                            )}
+                        </li>
+                        )) : <p>No recently paid bills.</p>}
+                    </ul>
+                    {hasMorePaidBills && (
+                        <button onClick={() => setPaidBillsLimit(prev => prev + 10)} className="load-more-btn">
+                        Load more...
+                        </button>
+                    )}
                     </>
                 )}
             </section>
