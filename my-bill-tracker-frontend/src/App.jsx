@@ -6,7 +6,8 @@ import Dashboard from './pages/Dashboard.jsx';
 import OrganizationsPage from './pages/BillOrganizationForm.jsx'; 
 import BillDetails from './pages/BillDetails.jsx';
 import RecordPaymentForm from './pages/RecordPaymentForm.jsx';
-import BillsPage from './pages/BillsPage.jsx'; // merged page from ./pages/AddBillForm.jsx, ./pages/EditBillListPage.jsx, ./pages/EditBillForm
+import BillsPage from './pages/BillsPage.jsx';
+import PaymentDetails from './pages/PaymentDetails.jsx'; 
 import Register from './pages/Register.jsx';
 import Login from './pages/Login.jsx';
 import NotFound from './pages/NotFound.jsx';
@@ -141,6 +142,7 @@ function AppContent() {
           <Route path="/organizations/:organizationId/bills/:billId/info" element={<ProtectedRoute><BillDetails /></ProtectedRoute>} />
           <Route path="/bills" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
           <Route path="/bills/:id" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
+          <Route path="/payments/:paymentId" element={<ProtectedRoute><PaymentDetails /></ProtectedRoute>} />
           <Route path="/record-payment" element={<ProtectedRoute><RecordPaymentForm /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
