@@ -143,14 +143,10 @@ function Dashboard() {
         }
     }, [isAuthenticated, loading, authAxios, location.state?.refresh]);
 
-    // 🔍 Debug: detect any recently paid rows missing a payment id
     useEffect(() => {
         const badRows = recentlyPaidBills.filter(bill => !bill?.id);
         if (badRows.length > 0) {
-            console.error(
-                'Recently paid bills missing payment id:',
-                badRows
-            );
+            console.error('Recently paid bills missing payment id');
         }
     }, [recentlyPaidBills]);
 
