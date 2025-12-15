@@ -71,7 +71,7 @@ function PaymentDetails() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      const res = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/${paymentId}`, {
+      const res = await authAxios(`${config.BILL_PAYMENT_API_BASE_URL}/payments/${paymentId}/edit`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm)

@@ -964,6 +964,9 @@ app.put('/payments/:id', async (req, res) => {
     const { datePaid, amountPaid: newPaymentAmount, confirmationCode, notes } = req.body;
 
     // Validate the input for this specific action
+    if (req.path.includes('/edit')) {
+      return res.status(400).json({ message: 'Wrong endpoint for editing.' });
+    }
     if (newPaymentAmount == null || !datePaid) {
         return res.status(400).json({ message: 'To record a payment, a valid amountPaid and datePaid are required.' });
     }
@@ -1040,6 +1043,39 @@ app.delete('/payments/:id', async (req, res) => {
     console.error('Error deleting payment record:', error);
     res.status(500).json({ message: 'Server error deleting payment record.' });
   }
+});
+
+/**
+ * @route PUT /payments/:id/edit
+ * @desc Edit an existing payment record (replace values)
+ * @access Private
+ */
+app.put('/payments/:id/edit', async (req, res) => {
+    const { id } = req.params;
+    const user_id = req.user.id;
+    const { amountPaid, datePaid, confirmationCode, notes } = req.body;
+
+    if (amountPaid == null || !datePaid) {
+        return res.status(400).json({ message: 'amountPaid and datePaid are required.' });
+    }
+
+    try {
+        const [result] = await pool.execute(
+            `UPDATE payments
+             SET amount_paid = ?, date_paid = ?, confirmation_code = ?, notes = ?
+             WHERE id = ? AND user_id = ?`,
+            [amountPaid, datePaid, confirmationCode || null, notes || null, id, user_id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Payment not found or not authorized.' });
+        }
+
+        res.status(200).json({ message: 'Payment updated successfully.' });
+    } catch (err) {
+        console.error('Error editing payment:', err);
+        res.status(500).json({ message: 'Server error editing payment.' });
+    }
 });
 
 // API Endpoint to send a test Slack notification
