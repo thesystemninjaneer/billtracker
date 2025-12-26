@@ -250,3 +250,27 @@
     color: #2563eb; /* blue-600 on hover */
     background-color: rgba(96, 165, 250, 0.1); /* optional light hover effect */
 }
+
+.pagination-container {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.pagination-btn {
+  background: #1f2937;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.pagination-btn.active {
+  background: #3b82f6;
+}
+
+.pagination-btn:hover {
+  background: #2563eb;
+}
