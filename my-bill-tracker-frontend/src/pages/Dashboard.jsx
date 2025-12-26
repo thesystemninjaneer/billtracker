@@ -91,13 +91,26 @@ function Dashboard() {
     const [recentlyPaidBills, setRecentlyPaidBills] = useState([]);
     const [recurringBills, setRecurringBills] = useState([]);
     const [isFetching, setIsFetching] = useState(true);
-    const [error, setError] = useState(null);
-
     const [isOrganizationsCollapsed, setIsOrganizationsCollapsed] = useState(true);
     const [isUpcomingBillsCollapsed, setIsUpcomingBillsCollapsed] = useState(false);
     const [isRecentlyPaidCollapsed, setIsRecentlyPaidCollapsed] = useState(true);
     const [paidBillsLimit, setPaidBillsLimit] = useState(10);
     const [monthlyOverview, setMonthlyOverview] = useState(null);
+    const [error, setError] = useState(null);
+
+    const fetchLastPaidForBill = async (billId) => {
+        try {
+            const res = await authAxios(
+                `${config.BILL_PAYMENT_API_BASE_URL}/payments/bill/${billId}/last-paid`
+            );
+
+            if (!res.ok) return null;
+            return await res.json(); // { id, datePaid, amountPaid }
+        } catch (err) {
+            console.error(`Failed to fetch last-paid for bill ${billId}`, err);
+            return null;
+        }
+    };
 
     const fetchData = async () => {
         setIsFetching(true);
@@ -121,7 +134,21 @@ function Dashboard() {
             const overviewData = await overviewRes.json();
 
             setOrganizations(orgsData.organizations || []);
-            setUpcomingBills(upcomingData || []);
+            // include last-paid info per bill
+            const enrichedUpcoming = await Promise.all(
+                (upcomingData || []).map(async bill => {
+                    if (!bill.billId) return bill;
+
+                    const lastPaid = await fetchLastPaidForBill(bill.billId);
+
+                    return {
+                        ...bill,
+                        lastPaidDate: lastPaid?.datePaid || null,
+                        lastPaidAmount: lastPaid?.amountPaid || null,
+                    };
+                })
+            );
+            setUpcomingBills(enrichedUpcoming);
             setRecentlyPaidBills(paidData || []);
             setRecurringBills(billsData || []);
             setMonthlyOverview(overviewData);
@@ -151,17 +178,28 @@ function Dashboard() {
     }, [recentlyPaidBills]);
 
     const formatCurrency = (amount) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-    
+    const clientTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+ 
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
-            timeZone: 'UTC'
+            timeZone: clientTimeZone
         });
     };
     
+    const formatDateShort = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: '2-digit',
+            timeZone: clientTimeZone
+        });
+    };
+
     const recentlyPaidBillsToShow = recentlyPaidBills.slice(0, paidBillsLimit);
     const hasMorePaidBills = recentlyPaidBills.length > paidBillsLimit;
 
@@ -367,6 +405,7 @@ function Dashboard() {
                             <li key={bill.id} className="bill-item upcoming-item">
                                 <div>
                                     <span className="bill-org">{bill.organizationName}</span>
+
                                     {bill.billName && (
                                         <Link 
                                             to={`/organizations/${bill.organizationId}/bills/${bill.billId}/info`}
@@ -375,11 +414,14 @@ function Dashboard() {
                                         >
                                             ({bill.billName})
                                         </Link>
-                                    )} 
-                                    {!bill.billName && ' - '}
-                                    {bill.billName && ' - '}
-                                    <span className="due-date"> Due {formatDate(bill.dueDate)}: </span>
-                                    <span>{formatCurrency(bill.amountDue)}</span>
+                                    )}
+                                    <span>
+                                        {' – Due: '}{formatDateShort(bill.dueDate)}{' '}{formatCurrency(bill.amountDue)}
+
+                                        {bill.lastPaidDate && bill.lastPaidAmount 
+                                            ? ` – Last payment: ${formatCurrency(bill.lastPaidAmount)} on ${formatDateShort(bill.lastPaidDate)}`
+                                            : ' – Last payment: None'}
+                                    </span>
                                 </div>
                                 <Link to={`/record-payment?paymentId=${bill.id}`} className="action-link record-link">Record Payment</Link>
                             </li>

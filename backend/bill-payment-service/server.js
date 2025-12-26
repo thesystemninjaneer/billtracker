@@ -676,6 +676,51 @@ app.get('/payments/organization/:orgId/timeseries', async (req, res) => {
 });
 
 /**
+ * @route GET /payments/bill/:billId/last-paid
+ * @desc Get the most recent paid payment for a bill (closest to today)
+ *       by the current logged in user.
+ * @access Private
+ */
+app.get('/payments/bill/:billId/last-paid', async (req, res) => {
+    const { billId } = req.params;
+    const userId = req.user.id;
+
+    try {
+        const [rows] = await pool.execute(
+            `
+            SELECT
+                id,
+                date_paid AS datePaid,
+                amount_paid AS amountPaid
+            FROM payments
+            WHERE
+                user_id = ?
+                AND bill_id = ?
+                AND payment_status = 'paid'
+                AND date_paid <= CURDATE()
+            ORDER BY date_paid DESC
+            LIMIT 1
+            `,
+            [userId, billId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                message: 'No paid payments found for this bill.'
+            });
+        }
+
+        res.status(200).json(rows[0]);
+
+    } catch (error) {
+        console.error('Error fetching most recent payment for bill:', error);
+        res.status(500).json({
+            message: 'Server error fetching most recent payment.'
+        });
+    }
+});
+
+/**
  * @route GET /payments/monthly-overview
  * @desc Show all payments made or due for each day in a given month
  *       (YYYY-MM), defaulting  to the current month if unspecified.

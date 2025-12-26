@@ -165,7 +165,7 @@ function OrganizationsPage() {
                         <form onSubmit={handleSubmit}>
                             {/* Form fields */}
                             <div className="form-group"><label>Organization Name:</label><input type="text" name="name" value={formData.name} onChange={handleChange} required /></div>
-                            <div className="form-group"><label>Account Number:</label><input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleChange} required /></div>
+                            <div className="form-group"><label>Account ID/Number:</label><input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleChange} required /></div>
                             <div className="form-group"><label>Typical Due Day (1-31):</label><input type="number" name="typicalDueDay" value={formData.typicalDueDay} onChange={handleChange} min="1" max="31" /></div>
                             <div className="form-group"><label>Website (Optional):</label><input type="url" name="website" value={formData.website} onChange={handleChange} /></div>
                             <div className="form-group"><label>Contact Info (Optional):</label><input type="text" name="contactInfo" value={formData.contactInfo} onChange={handleChange} /></div>
