@@ -96,6 +96,8 @@ function Dashboard() {
     const [isRecentlyPaidCollapsed, setIsRecentlyPaidCollapsed] = useState(true);
     const [paidBillsLimit, setPaidBillsLimit] = useState(10);
     const [monthlyOverview, setMonthlyOverview] = useState(null);
+    const [orgsLimit, setOrgsLimit] = useState(10); // Number of organizations to show per page
+
     const [error, setError] = useState(null);
 
     const fetchLastPaidForBill = async (billId) => {
@@ -202,6 +204,8 @@ function Dashboard() {
 
     const recentlyPaidBillsToShow = recentlyPaidBills.slice(0, paidBillsLimit);
     const hasMorePaidBills = recentlyPaidBills.length > paidBillsLimit;
+    const organizationsToShow = organizations.slice(0, orgsLimit);
+    const hasMoreOrgs = organizations.length > orgsLimit;
 
     if (loading || isFetching) return <div className="dashboard-container">Loading dashboard...</div>;
 
@@ -437,7 +441,7 @@ function Dashboard() {
                 </h3>
                 {!isOrganizationsCollapsed && (
                     <ul>
-                        {organizations.length > 0 ? organizations.map(org => {
+                        {organizationsToShow.length > 0 ? organizationsToShow.map(org => {
                             const billsForThisOrg = recurringBills.filter(bill => bill.organizationId === org.id);
                             return (
                                 <li key={org.id} className="bill-item organization-group">
@@ -451,19 +455,17 @@ function Dashboard() {
                                             <Link to={`/organizations/${org.id}`} className="action-link edit-link">Edit</Link>
                                         </div>
                                     </div>
-                                    {/* Render recurring bills if they exist */}
                                     {billsForThisOrg.length > 0 && (
                                         <ul className="recurring-bills-sublist">
                                             {billsForThisOrg.map(bill => (
                                                 <li key={bill.id} className="bill-item sub-item">
                                                     <span>{bill.billName} (Typically ~{formatCurrency(bill.typicalAmount)})</span>
                                                     <Link to={`/record-payment?organizationId=${org.id}&billId=${bill.id}`} className="action-link record-link">Record Payment</Link>
-                                                    <Link to={`/organizations/${org.id}/bills/${bill.id}/info`} className="action-link info-link" >Info </Link>
+                                                    <Link to={`/organizations/${org.id}/bills/${bill.id}/info`} className="action-link info-link">Info</Link>
                                                 </li>
                                             ))}
                                         </ul>
                                     )}
-                                    {/* Render a generic "Record Payment" button if NO recurring bills exist for this org */}
                                     {billsForThisOrg.length === 0 && (
                                         <div className="ad-hoc-payment-link">
                                             <Link to={`/record-payment?organizationId=${org.id}`} className="action-link record-link">Record Ad-Hoc Payment</Link>
@@ -472,6 +474,13 @@ function Dashboard() {
                                 </li>
                             );
                         }) : <p>No billing organizations added yet.</p>}
+
+                        {hasMoreOrgs && (
+                            <button onClick={() => setOrgsLimit(prev => prev + 5)} className="load-more-btn">
+                                Load more...
+                            </button>
+                        )}
+
                     </ul>
                 )}
             </section>
