@@ -31,6 +31,40 @@ function BillsPage() {
 
   const [showInactive, setShowInactive] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const BILLS_PER_PAGE = 10;
+  const [billsCurrentPage, setBillsCurrentPage] = useState(1);
+
+  //Helper functions
+  const renderBillsPagination = () => {
+    if (totalBillPages <= 1) return null;
+
+    const pages = [];
+
+    for (let i = 1; i <= totalBillPages; i++) {
+      if (
+        i === 1 ||
+        i === totalBillPages ||
+        Math.abs(i - billsCurrentPage) <= 1
+      ) {
+        pages.push(
+          <button
+            key={i}
+            className={`pagination-btn ${i === billsCurrentPage ? 'active' : ''}`}
+            onClick={() => setBillsCurrentPage(i)}
+          >
+            {i}
+          </button>
+        );
+      } else if (pages[pages.length - 1] !== '...') {
+        pages.push(
+          <span key={`ellipsis-${i}`} className="pagination-ellipsis">…</span>
+        );
+      }
+    }
+
+    return <div className="pagination-container mt-6">{pages}</div>;
+  };
+
 
   // Part 2: Fetch Orgs, Bills & Bill by ID
   // Load all bills
@@ -106,6 +140,10 @@ function BillsPage() {
     return () => clearTimeout(delay);
   }, [searchTerm, fetchBills]);
 
+  useEffect(() => {
+    setBillsCurrentPage(1);
+  }, [searchTerm, showInactive]);
+
 
   // Part 3 form handlers
   const handleChange = (e) => {
@@ -164,6 +202,13 @@ function BillsPage() {
     setIsFormVisible(false);
     if (isEditing) navigate('/bills');
   };
+
+  const totalBillPages = Math.ceil(bills.length / BILLS_PER_PAGE);
+
+  const billsToShow = bills.slice(
+    (billsCurrentPage - 1) * BILLS_PER_PAGE,
+    billsCurrentPage * BILLS_PER_PAGE
+  );
 
   return (
     <div className="dashboard-container">
@@ -243,32 +288,49 @@ function BillsPage() {
             />
           </div>
           <section className="dashboard-section">
-            {loading ? <p>Loading bills...</p> : bills.length === 0 ? (
-                <p>No recurring bills yet. <button onClick={showAddForm} className="action-link">Add one now</button>.</p>
+            {loading ? (
+              <p>Loading bills...</p>
+            ) : bills.length === 0 ? (
+              <p>
+                No recurring bills yet.{' '}
+                <button onClick={showAddForm} className="action-link">
+                  Add one now
+                </button>.
+              </p>
             ) : (
-              <ul>{bills.map(bill => (
-                <li key={bill.id} className="bill-item">
-                    <div>
-                    <span className="bill-org">{bill.organizationName}</span>
-                    {bill.billName && (
-                      <Link 
-                        to={`/organizations/${bill.organizationId}/bills/${bill.id}/info`} 
-                        className="bill-name"
-                        style={{ marginLeft: '5px', color: '#3182ce', textDecoration: 'none' }}
-                      > 
-                        ({bill.billName})
-                      </Link>
-                    )}
-                    {bill.isActive === 0 && <span style={{ color: 'red', marginLeft: '10px' }}>(Inactive)</span>}
-                    </div>
-                    <div className="item-actions">
-                      <Link to={`/bills/${bill.id}`} className="action-link edit-link">Edit</Link>
-                    </div>
-                </li>
-                ))}
-              </ul>
+              <>
+                <ul>
+                  {billsToShow.map(bill => (
+                    <li key={bill.id} className="bill-item">
+                      <div>
+                        <span className="bill-org">{bill.organizationName}</span>
+                        {bill.billName && (
+                          <Link
+                            to={`/organizations/${bill.organizationId}/bills/${bill.id}/info`}
+                            className="bill-name"
+                            style={{ marginLeft: '5px', color: '#3182ce', textDecoration: 'none' }}
+                          >
+                            ({bill.billName})
+                          </Link>
+                        )}
+                        {bill.isActive === 0 && (
+                          <span style={{ color: 'red', marginLeft: '10px' }}>(Inactive)</span>
+                        )}
+                      </div>
+                      <div className="item-actions">
+                        <Link to={`/bills/${bill.id}`} className="action-link edit-link">
+                          Edit
+                        </Link>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                {renderBillsPagination()}
+              </>
             )}
           </section>
+
         </>
         )}
         </div>

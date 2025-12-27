@@ -91,13 +91,29 @@ function Dashboard() {
     const [recentlyPaidBills, setRecentlyPaidBills] = useState([]);
     const [recurringBills, setRecurringBills] = useState([]);
     const [isFetching, setIsFetching] = useState(true);
-    const [error, setError] = useState(null);
-
     const [isOrganizationsCollapsed, setIsOrganizationsCollapsed] = useState(true);
     const [isUpcomingBillsCollapsed, setIsUpcomingBillsCollapsed] = useState(false);
     const [isRecentlyPaidCollapsed, setIsRecentlyPaidCollapsed] = useState(true);
-    const [paidBillsLimit, setPaidBillsLimit] = useState(10);
     const [monthlyOverview, setMonthlyOverview] = useState(null);
+    const [paidCurrentPage, setPaidCurrentPage] = useState(1);
+    const PAID_PER_PAGE = 10;
+    const [orgsCurrentPage, setOrgsCurrentPage] = useState(1);
+    const ORGS_PER_PAGE = 10;
+    const [error, setError] = useState(null);
+
+    const fetchLastPaidForBill = async (billId) => {
+        try {
+            const res = await authAxios(
+                `${config.BILL_PAYMENT_API_BASE_URL}/payments/bill/${billId}/last-paid`
+            );
+
+            if (!res.ok) return null;
+            return await res.json(); // { id, datePaid, amountPaid }
+        } catch (err) {
+            console.error(`Failed to fetch last-paid for bill ${billId}`, err);
+            return null;
+        }
+    };
 
     const fetchData = async () => {
         setIsFetching(true);
@@ -121,7 +137,21 @@ function Dashboard() {
             const overviewData = await overviewRes.json();
 
             setOrganizations(orgsData.organizations || []);
-            setUpcomingBills(upcomingData || []);
+            // include last-paid info per bill
+            const enrichedUpcoming = await Promise.all(
+                (upcomingData || []).map(async bill => {
+                    if (!bill.billId) return bill;
+
+                    const lastPaid = await fetchLastPaidForBill(bill.billId);
+
+                    return {
+                        ...bill,
+                        lastPaidDate: lastPaid?.datePaid || null,
+                        lastPaidAmount: lastPaid?.amountPaid || null,
+                    };
+                })
+            );
+            setUpcomingBills(enrichedUpcoming);
             setRecentlyPaidBills(paidData || []);
             setRecurringBills(billsData || []);
             setMonthlyOverview(overviewData);
@@ -150,20 +180,91 @@ function Dashboard() {
         }
     }, [recentlyPaidBills]);
 
+    useEffect(() => {
+        setPaidCurrentPage(1);
+    }, [recentlyPaidBills.length]);
+
     const formatCurrency = (amount) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-    
+    const clientTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+ 
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
-            timeZone: 'UTC'
+            timeZone: clientTimeZone
         });
     };
     
-    const recentlyPaidBillsToShow = recentlyPaidBills.slice(0, paidBillsLimit);
-    const hasMorePaidBills = recentlyPaidBills.length > paidBillsLimit;
+    const formatDateShort = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: '2-digit',
+            timeZone: clientTimeZone
+        });
+    };
+
+    // Compute paged organizations and total pages
+    const totalPaidPages = Math.ceil(recentlyPaidBills.length / PAID_PER_PAGE);
+    const recentlyPaidBillsToShow = recentlyPaidBills.slice(
+        (paidCurrentPage - 1) * PAID_PER_PAGE,
+        paidCurrentPage * PAID_PER_PAGE
+    );
+    const totalOrgsPages = Math.ceil(organizations.length / ORGS_PER_PAGE);
+    const organizationsToShow = organizations.slice(
+        (orgsCurrentPage - 1) * ORGS_PER_PAGE,
+        orgsCurrentPage * ORGS_PER_PAGE
+    );
+    // Render pagination controls
+    const renderOrgsPagination = () => {
+        if (totalOrgsPages <= 1) return null;
+
+        const pages = [];
+        for (let i = 1; i <= totalOrgsPages; i++) {
+            if (i === 1 || i === totalOrgsPages || Math.abs(i - orgsCurrentPage) <= 1) {
+            pages.push(
+                <button
+                key={i}
+                className={`pagination-btn ${i === orgsCurrentPage ? 'active' : ''}`}
+                onClick={() => setOrgsCurrentPage(i)}
+                >
+                {i}
+                </button>
+            );
+            } else if (pages[pages.length - 1] !== '...') {
+            pages.push(<span key={i}>...</span>);
+            }
+        }
+        return <div className="pagination-container">{pages}</div>;
+    };
+
+    const renderPaidPagination = () => {
+        if (totalPaidPages <= 1) return null;
+
+        const pages = [];
+        for (let i = 1; i <= totalPaidPages; i++) {
+            if (i === 1 || i === totalPaidPages || Math.abs(i - paidCurrentPage) <= 1) {
+            pages.push(
+                <button
+                key={i}
+                className={`pagination-btn ${i === paidCurrentPage ? 'active' : ''}`}
+                onClick={() => setPaidCurrentPage(i)}
+                >
+                {i}
+                </button>
+            );
+            } else if (pages[pages.length - 1] !== '...') {
+            pages.push(<span key={i}>...</span>);
+            }
+        }
+
+        return <div className="pagination-container">{pages}</div>;
+    };
+
+
 
     if (loading || isFetching) return <div className="dashboard-container">Loading dashboard...</div>;
 
@@ -367,6 +468,7 @@ function Dashboard() {
                             <li key={bill.id} className="bill-item upcoming-item">
                                 <div>
                                     <span className="bill-org">{bill.organizationName}</span>
+
                                     {bill.billName && (
                                         <Link 
                                             to={`/organizations/${bill.organizationId}/bills/${bill.billId}/info`}
@@ -375,11 +477,14 @@ function Dashboard() {
                                         >
                                             ({bill.billName})
                                         </Link>
-                                    )} 
-                                    {!bill.billName && ' - '}
-                                    {bill.billName && ' - '}
-                                    <span className="due-date"> Due {formatDate(bill.dueDate)}: </span>
-                                    <span>{formatCurrency(bill.amountDue)}</span>
+                                    )}
+                                    <span>
+                                        {' – Due: '}{formatDateShort(bill.dueDate)}{' '}{formatCurrency(bill.amountDue)}
+
+                                        {bill.lastPaidDate && bill.lastPaidAmount 
+                                            ? ` – Last payment: ${formatCurrency(bill.lastPaidAmount)} on ${formatDateShort(bill.lastPaidDate)}`
+                                            : ' – Last payment: None'}
+                                    </span>
                                 </div>
                                 <Link to={`/record-payment?paymentId=${bill.id}`} className="action-link record-link">Record Payment</Link>
                             </li>
@@ -394,51 +499,54 @@ function Dashboard() {
                     <FontAwesomeIcon icon={isOrganizationsCollapsed ? faChevronRight : faChevronDown} /> 🏠 Your Bill Organizations
                 </h3>
                 {!isOrganizationsCollapsed && (
+                    <>
                     <ul>
-                        {organizations.length > 0 ? organizations.map(org => {
-                            const billsForThisOrg = recurringBills.filter(bill => bill.organizationId === org.id);
-                            return (
-                                <li key={org.id} className="bill-item organization-group">
-                                    <div className="organization-header">
-                                        <div>
-                                            <span className="bill-org">{org.name}</span>
-                                            <span> (Account: {org.accountNumber || 'N/A'})</span>
-                                        </div>
-                                        <div className="item-actions">
-                                            {org.website && <a href={org.website} target="_blank" rel="noopener noreferrer" className="action-link website-link">Visit Website</a>}
-                                            <Link to={`/organizations/${org.id}`} className="action-link edit-link">Edit</Link>
-                                        </div>
-                                    </div>
-                                    {/* Render recurring bills if they exist */}
-                                    {billsForThisOrg.length > 0 && (
-                                        <ul className="recurring-bills-sublist">
-                                            {billsForThisOrg.map(bill => (
-                                                <li key={bill.id} className="bill-item sub-item">
-                                                    <span>{bill.billName} (Typically ~{formatCurrency(bill.typicalAmount)})</span>
-                                                    <Link to={`/record-payment?organizationId=${org.id}&billId=${bill.id}`} className="action-link record-link">Record Payment</Link>
-                                                    <Link to={`/organizations/${org.id}/bills/${bill.id}/info`} className="action-link info-link" >Info </Link>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                    {/* Render a generic "Record Payment" button if NO recurring bills exist for this org */}
-                                    {billsForThisOrg.length === 0 && (
-                                        <div className="ad-hoc-payment-link">
-                                            <Link to={`/record-payment?organizationId=${org.id}`} className="action-link record-link">Record Ad-Hoc Payment</Link>
-                                        </div>
-                                    )}
-                                </li>
-                            );
+                        {organizationsToShow.length > 0 ? organizationsToShow.map(org => {
+                        const billsForThisOrg = recurringBills.filter(bill => bill.organizationId === org.id);
+                        return (
+                            <li key={org.id} className="bill-item organization-group">
+                            <div className="organization-header">
+                                <div>
+                                <span className="bill-org">{org.name}</span>
+                                <span> (Account: {org.accountNumber || 'N/A'})</span>
+                                </div>
+                                <div className="item-actions">
+                                {org.website && <a href={org.website} target="_blank" rel="noopener noreferrer" className="action-link website-link">Visit Website</a>}
+                                <Link to={`/organizations/${org.id}`} className="action-link edit-link">Edit</Link>
+                                </div>
+                            </div>
+                            {billsForThisOrg.length > 0 && (
+                                <ul className="recurring-bills-sublist">
+                                {billsForThisOrg.map(bill => (
+                                    <li key={bill.id} className="bill-item sub-item">
+                                    <span>{bill.billName} (Typically ~{formatCurrency(bill.typicalAmount)})</span>
+                                    <Link to={`/record-payment?organizationId=${org.id}&billId=${bill.id}`} className="action-link record-link">Record Payment</Link>
+                                    <Link to={`/organizations/${org.id}/bills/${bill.id}/info`} className="action-link info-link">Info</Link>
+                                    </li>
+                                ))}
+                                </ul>
+                            )}
+                            {billsForThisOrg.length === 0 && (
+                                <div className="ad-hoc-payment-link">
+                                <Link to={`/record-payment?organizationId=${org.id}`} className="action-link record-link">Record Ad-Hoc Payment</Link>
+                                </div>
+                            )}
+                            </li>
+                        );
                         }) : <p>No billing organizations added yet.</p>}
                     </ul>
+                    {renderOrgsPagination()}
+                    </>
                 )}
-            </section>
+                </section>
+
 
             {/* Recently Paid Section */}
             <section className="dashboard-section recently-paid">
                 <h3 onClick={() => setIsRecentlyPaidCollapsed(!isRecentlyPaidCollapsed)} className="collapsible-header">
                     <FontAwesomeIcon icon={isRecentlyPaidCollapsed ? faChevronRight : faChevronDown} /> ✅ Recently Paid Bills
                 </h3>
+
                 {!isRecentlyPaidCollapsed && (
                     <>
                     <ul>
@@ -449,7 +557,9 @@ function Dashboard() {
                             {bill.billName && <span className="bill-name"> ({bill.billName})</span>}
                             <span> - Paid: {formatCurrency(bill.amountPaid)}</span>
                             <span className="paid-date"> on {formatDate(bill.datePaid)}</span>
-                            {bill.confirmationCode && <span className="confirmation-code"> | Confirmation: {bill.confirmationCode}</span>}
+                            {bill.confirmationCode && (
+                                <span className="confirmation-code"> | Confirmation: {bill.confirmationCode}</span>
+                            )}
                             </div>
                             {bill.id && (
                             <Link to={`/payments/${bill.id}`} className="action-link info-link">
@@ -459,14 +569,12 @@ function Dashboard() {
                         </li>
                         )) : <p>No recently paid bills.</p>}
                     </ul>
-                    {hasMorePaidBills && (
-                        <button onClick={() => setPaidBillsLimit(prev => prev + 10)} className="load-more-btn">
-                        Load more...
-                        </button>
-                    )}
+
+                    {renderPaidPagination()}
                     </>
                 )}
-            </section>
+                </section>
+
         </div>
     );
 }

@@ -45,6 +45,38 @@ function OrganizationsPage() {
     const [allOrganizations, setAllOrganizations] = useState([]);
     const [similarOrg, setSimilarOrg] = useState(null);
 
+    // Helper functions 
+    const renderOrgListPagination = () => {
+        const totalPages = listData.totalPages;
+        if (totalPages <= 1) return null;
+
+        const pages = [];
+
+        for (let i = 1; i <= totalPages; i++) {
+            if (
+                i === 1 ||
+                i === totalPages ||
+                Math.abs(i - currentPage) <= 1
+            ) {
+                pages.push(
+                    <button
+                        key={i}
+                        className={`pagination-btn ${i === currentPage ? 'active' : ''}`}
+                        onClick={() => setCurrentPage(i)}
+                    >
+                        {i}
+                    </button>
+                );
+            } else if (pages[pages.length - 1] !== '...') {
+                pages.push(
+                    <span key={`ellipsis-${i}`} className="pagination-ellipsis">…</span>
+                );
+            }
+        }
+
+        return <div className="pagination-container mt-6">{pages}</div>;
+    };
+
     const fetchOrganizations = useCallback(async (search, page) => {
         setListLoading(true);
         setListError(null);
@@ -165,7 +197,7 @@ function OrganizationsPage() {
                         <form onSubmit={handleSubmit}>
                             {/* Form fields */}
                             <div className="form-group"><label>Organization Name:</label><input type="text" name="name" value={formData.name} onChange={handleChange} required /></div>
-                            <div className="form-group"><label>Account Number:</label><input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleChange} required /></div>
+                            <div className="form-group"><label>Account ID/Number:</label><input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleChange} required /></div>
                             <div className="form-group"><label>Typical Due Day (1-31):</label><input type="number" name="typicalDueDay" value={formData.typicalDueDay} onChange={handleChange} min="1" max="31" /></div>
                             <div className="form-group"><label>Website (Optional):</label><input type="url" name="website" value={formData.website} onChange={handleChange} /></div>
                             <div className="form-group"><label>Contact Info (Optional):</label><input type="text" name="contactInfo" value={formData.contactInfo} onChange={handleChange} /></div>
@@ -203,14 +235,8 @@ function OrganizationsPage() {
                                             </li>
                                         ))}</ul>
                                     ) : (<p>No organizations found.</p>)}
-                                    
-                                    {listData.totalPages > 1 && (
-                                        <div className="flex justify-between items-center mt-6">
-                                            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-4 py-2 bg-gray-200 rounded-md">Previous</button>
-                                            <span>Page {listData.currentPage} of {listData.totalPages}</span>
-                                            <button onClick={() => setCurrentPage(p => Math.min(listData.totalPages, p + 1))} disabled={currentPage === listData.totalPages} className="px-4 py-2 bg-gray-200 rounded-md">Next</button>
-                                        </div>
-                                    )}
+                
+                                    {renderOrgListPagination()}
                                 </>
                             )}
                         </>
