@@ -705,9 +705,8 @@ app.get('/payments/bill/:billId/last-paid', async (req, res) => {
         );
 
         if (rows.length === 0) {
-            return res.status(404).json({
-                message: 'No paid payments found for this bill.'
-            });
+            // Return 200 OK with null instead of 404
+            return res.status(200).json(null);
         }
 
         res.status(200).json(rows[0]);
